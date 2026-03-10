@@ -22,12 +22,12 @@ services:
     ports:
       - 5432:5432
     environment:
-      - POSTGRES_USER = admin-agent
-      - POSTGRES_PASSWORD = admin-agent
-      - POSTGRES_DB = internet-db
+      POSTGRES_USER: admin-agent
+      POSTGRES_PASSWORD: admin-agent
+      POSTGRES_DB: internet-db
   
     volumes:
       - postgres_data_internet:/var/lib/postgresql/data
 
 volumes:
-  postgres_data_internet
+  postgres_data_internet:
