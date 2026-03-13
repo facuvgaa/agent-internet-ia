@@ -13,7 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping("api/v1/internet-ia")
+@RequestMapping("/api/v1/internet-ia")
 @RequiredArgsConstructor
 @Slf4j
 public class InternetClaimController {

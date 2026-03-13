@@ -9,7 +9,7 @@ import jakarta.persistence.Table;
 import lombok.Data;
 
 @Entity
-@Table(name = "Customer")
+@Table(name = "customers")
 @Data
 public class CustomerEntity {
     @Id
@@ -20,7 +20,7 @@ public class CustomerEntity {
     private String name;
 
     @Column (unique = true, nullable = false)
-    private String mail;
+    private String email;
 
     private String phone;
     private String status;
