@@ -1,15 +1,14 @@
 import operator
 from typing import Annotated, TypedDict
 from langgraph.graph import StateGraph, END, state
-from langchain_aws import ChatBedrock
-from langchain_core.messages import HumanMessage, BaseMessage
+from langchain_core.messages import HumanMessage, BaseMessage, SystemMessage
 import logging
 from dotenv import load_dotenv
 import os
 from connection_llm.llm_conecction import get_bedrock_model_brain as llm_brain
 from langgraph.prebuilt import tools_condition, tool_node
 from tools import tools
-
+from context_llm.contexts import agent_facturacion
 
 
 logging.basicConfig(level=logging.INFO)
@@ -61,7 +60,9 @@ class LlmBrain():
     def run(self, input_text: str):
 
         initial_state ={
-            "messages": [HumanMessage(content=input_text)],
+            "messages": [
+                SystemMessage(content=agent_facturacion()),
+                HumanMessage(content=input_text)],
             "metadata": {"source": "kafka"}
         }
 
