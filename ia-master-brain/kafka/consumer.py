@@ -6,7 +6,7 @@ from confluent_kafka import Consumer, Producer, KafkaError
 from langchain_aws import ChatBedrock
 from langchain_core.messages import HumanMessage
 import logging
-
+from connection_llm.llm_conecction import get_bedrock_model_master as llm_master
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,10 +16,7 @@ load_dotenv()
 
 try:
 
-    chat_haikiu = ChatBedrock(
-        model_id = os.getenv("AWS_PRIMARY_LLM", "anthropic.claude-3-haiku-20240307-v1:0"),
-        region_name= os.getenv("AWS_REGION", "us-east-1")
-    )
+    chat_haikiu = llm_master()
     logger.info("Conect to AWS Bedrock (Haiku)")
 except Exception as e:
     logger.erro(F"error connectin to kaikiu {e}")

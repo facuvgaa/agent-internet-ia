@@ -6,6 +6,11 @@ from langchain_core.messages import HumanMessage, BaseMessage
 import logging
 from dotenv import load_dotenv
 import os
+from connection_llm.llm_conecction import get_bedrock_model_brain as llm_brain
+from langgraph.prebuilt import tools_condition, tool_node
+from tools import tools
+
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -19,10 +24,8 @@ class AgentEstate(TypedDict):
 class LlmBrain():
     def brain(self):
         try:
-            self.model = ChatBedrock(
-                model_llm = os.getenv("AWS_SECOND_LLM", "us.anthropic.claude-3-5-sonnet-20240620-v1:0"),
-                region_name = os.getenv("AWS_REGION", "us-east-1")
-            )
+            self.model = llm_brain().bind_tools(tools)
+
             logger.info("conect to aws bedrock(claude in connect)")
 
             self.workflow = self._build_graph()
@@ -37,14 +40,23 @@ class LlmBrain():
 
     def __build_graph(self):
 
+        tool_node = tool_node(tools)
+
         graph = StateGraph(AgentEstate)
 
         graph.add_node("tecnico_node", self.__call_brain)
+        graph.add_node("tools", tool_node)
+
+        graph.add_conditional_edges(
+            "tecnico_node",
+            tools_condition,
+            path_map={"tools": "tools", "__end__": END},
+        )
 
         graph.set_entry_point("tecnico_node")
-        graph.add_edge("tecnico_node", END)
-
+        graph.add_edge("tools", "tecnico_node")
         return graph.compile()
+        
 
     def run(self, input_text: str):
 
