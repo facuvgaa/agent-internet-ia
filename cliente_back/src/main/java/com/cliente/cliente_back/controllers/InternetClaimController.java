@@ -30,7 +30,7 @@ public class InternetClaimController {
             .orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/customers/service/{customerId}")
+    @GetMapping("/customers/services/{customerId}")
     public ResponseEntity<List<ServicesDTO>> getCustomerServices(@PathVariable Long customerId){
         var services = servicesService.findAllByCustomerId(customerId);
         return services.isEmpty()
