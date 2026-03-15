@@ -10,10 +10,10 @@ from langgraph.graph import StateGraph
 from langgraph.prebuilt import tools_condition, ToolNode
 
 from connection_llm.llm_conecction import get_bedrock_model_brain as llm_brain
-from tools.tools import get_customer_info, get_customer_service
+from tools.tools import get_customer_info, get_customer_service, create_ticket
 from context_llm.contexts import agent_facturacion
 
-tools = [get_customer_info, get_customer_service]
+tools = [get_customer_info, get_customer_service, create_ticket]
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
