@@ -63,7 +63,7 @@ def triage_message(message):
     prompt = f"""
     Eres un asistente de triaje. Analiza el mensaje y clasifícalo como 'CONSULTA' o 'RECLAMO'.
     Si el tono es de queja o pide datos específicos de facturas/servicios, usa 'RECLAMO'.
-    
+
     Mensaje: {message}
     Responde SOLO con la palabra 'RECLAMO' o 'CONSULTA'.
     """
@@ -74,8 +74,21 @@ def triage_message(message):
         logger.error(f"Triage failed: {e}")
         return "ERROR"
 
+
+def is_conversation_finished(content: str, clasificacion: str) -> bool:
+    """
+    Punto único para decidir si esta interacción cierra la conversación.
+    Implementá acá tu lógica de negocio (palabras clave, estado de ticket, etc.).
+    Por ahora siempre devuelve False para no cortar el chat.
+    """
+    return False
+
+
 # --- LOOP PRINCIPAL ---
 logger.info("Consumer started and polling...")
+
+
+conversation_route: dict[str, str] = {}
 
 try:
     while True:
@@ -94,46 +107,109 @@ try:
 
             logger.info(f"Mensaje de Kafka: '{content}' | ID: {customer_id}")
 
-            # 1. Triaje con Haiku
+            # 1. Ver ruteo actual de esta conversación
+            route = conversation_route.get(customer_id)
+
+            # 2. Si ya está ruteada al brain, saltamos el master
+            if route == "BRAIN":
+                clasificacion = "RECLAMO"  # ya fue clasificado antes
+
+                if brain:
+                    try:
+                        estado = brain.run(content, customer_id)
+                        raw_res = _last_ai_content(estado.get("messages", []))
+                        respuesta_final = _clean_response(raw_res)
+                        if not respuesta_final:
+                            logger.warning(
+                                "Brain devolvió respuesta vacía (mensajes=%s)",
+                                len(estado.get("messages", [])),
+                            )
+                            respuesta_final = "No pude generar una respuesta. Revisá los logs del agente."
+
+                        payload = json.dumps(
+                            {
+                                "respuesta": respuesta_final,
+                                "customer_id": customer_id,
+                                "contenido_original": content,
+                                "clasificacion": clasificacion,
+                            },
+                            ensure_ascii=False,
+                        )
+                        producer.produce(RESPUESTAS_TOPIC, value=payload.encode("utf-8"))
+                        producer.flush()
+                        logger.info(f"[OK] Respuesta enviada (brain directo) para ID {customer_id}")
+
+                        if is_conversation_finished(content, clasificacion):
+                            # Más adelante: save_conversation(customer_id) y limpieza de memoria corta
+                            conversation_route.pop(customer_id, None)
+
+                        consumer.commit(message=msg)
+                    except Exception as e:
+                        logger.error(f"Error procesando en Brain (ruta directa): {e}\n{traceback.format_exc()}")
+                else:
+                    logger.error("Brain no inicializado: no se puede procesar el mensaje (ruta directa)")
+
+                continue  # pasamos al siguiente mensaje del loop
+
+            # 3. Si aún no está ruteado al brain -> usar master (triaje)
             clasificacion = triage_message(content)
             logger.info(f"Clasificación: {clasificacion}")
 
             respuesta_enviada = False
-            if brain:
-                # 2. Ejecución del Cerebro (LangGraph)
+
+            if clasificacion == "RECLAMO" and brain:
+                # Primera vez que lo mandamos al brain: marcamos ruteo
+                conversation_route[customer_id] = "BRAIN"
+
                 try:
                     estado = brain.run(content, customer_id)
                     raw_res = _last_ai_content(estado.get("messages", []))
                     respuesta_final = _clean_response(raw_res)
                     if not respuesta_final:
-                        logger.warning("Brain devolvió respuesta vacía (mensajes=%s)", len(estado.get("messages", [])))
+                        logger.warning(
+                            "Brain devolvió respuesta vacía (mensajes=%s)",
+                            len(estado.get("messages", [])),
+                        )
                         respuesta_final = "No pude generar una respuesta. Revisá los logs del agente."
 
-                    payload = json.dumps({
-                        "respuesta": respuesta_final,
-                        "customer_id": customer_id,
-                        "contenido_original": content,
-                        "clasificacion": clasificacion
-                    }, ensure_ascii=False)
+                    payload = json.dumps(
+                        {
+                            "respuesta": respuesta_final,
+                            "customer_id": customer_id,
+                            "contenido_original": content,
+                            "clasificacion": clasificacion,
+                        },
+                        ensure_ascii=False,
+                    )
                     producer.produce(RESPUESTAS_TOPIC, value=payload.encode("utf-8"))
                     producer.flush()
                     respuesta_enviada = True
-                    logger.info(f"[OK] Respuesta enviada para ID {customer_id}")
+                    logger.info(f"[OK] Respuesta enviada (master→brain) para ID {customer_id}")
 
                 except Exception as e:
-                    logger.error(f"Error procesando en Brain: {e}\n{traceback.format_exc()}")
-                    payload = json.dumps({
-                        "respuesta": f"Error interno del agente: {e}",
-                        "customer_id": customer_id,
-                        "contenido_original": content,
-                        "clasificacion": clasificacion,
-                        "error": True
-                    }, ensure_ascii=False)
+                    logger.error(f"Error procesando en Brain (tras master): {e}\n{traceback.format_exc()}")
+                    payload = json.dumps(
+                        {
+                            "respuesta": f"Error interno del agente: {e}",
+                            "customer_id": customer_id,
+                            "contenido_original": content,
+                            "clasificacion": clasificacion,
+                            "error": True,
+                        },
+                        ensure_ascii=False,
+                    )
                     producer.produce(RESPUESTAS_TOPIC, value=payload.encode("utf-8"))
                     producer.flush()
                     respuesta_enviada = True
+
             else:
-                logger.error("Brain no inicializado: no se puede procesar el mensaje")
+                # CONSULTA u otros casos: por ahora solo logueamos; acá podés
+                # mantener el flujo actual de master o derivar a otro agente.
+                logger.info(
+                    "Mensaje clasificado como '%s' para ID %s. Mantener flujo de master o implementar otra ruta.",
+                    clasificacion,
+                    customer_id,
+                )
 
             if respuesta_enviada:
                 consumer.commit(message=msg)
