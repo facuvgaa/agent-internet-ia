@@ -15,7 +15,18 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
-
+    
+  postgrest:
+    image: postgres:15
+    container_name: conversations_db
+    ports:
+    - 5433:5433
+    environment:
+      POSTGRES_USER: admin-llm
+      POSTGRES_PASSWORD: admin-llm
+      POSTGRES_DB: conversation-db
+    volumes:
+      - postgres_data_conversation:/var/lib/postgresql/data
   postgres:
     image: postgres:15
     container_name: postgrest-agent
@@ -25,9 +36,9 @@ services:
       POSTGRES_USER: admin-agent
       POSTGRES_PASSWORD: admin-agent
       POSTGRES_DB: internet-db
-  
     volumes:
       - postgres_data_internet:/var/lib/postgresql/data
 
 volumes:
   postgres_data_internet:
+  postgres_data_conversation:

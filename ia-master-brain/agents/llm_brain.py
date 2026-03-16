@@ -1,17 +1,21 @@
 from __future__ import annotations
-
 import logging
 import operator
 from typing import Annotated, TypedDict
-
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, BaseMessage, SystemMessage, ToolMessage
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import tools_condition, ToolNode
-
 from connection_llm.llm_conecction import get_bedrock_model_brain as llm_brain
 from tools.tools import get_customer_info, get_customer_service, create_ticket
 from context_llm.contexts import agent_facturacion
+from langgraph.checkpoint.memory import InMemorySaver
+
+
+checkpointer = InMemorySaver()
+builder = StateGraph(...)
+
+graph = builder.compile(checkpointer=checkpointer)
 
 tools = [get_customer_info, get_customer_service, create_ticket]
 
