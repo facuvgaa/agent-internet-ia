@@ -24,7 +24,7 @@ except Exception as e:
 brain = None
 try:
     _b = LlmBrain()
-    _b.brain() # Importante: inicializa el grafo y vincula herramientas
+    _b.brain() 
     brain = _b
     logger.info("Brain system ready and compiled")
 except Exception as e:
