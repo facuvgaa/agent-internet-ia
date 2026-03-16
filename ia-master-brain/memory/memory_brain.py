@@ -58,8 +58,16 @@ def get_memory(customer_id: str, last_n: int = 5):
         logger.warning("No se pudieron cargar conversaciones para %s: %s", customer_id, e)
         return []
 
+def get_full_conversation(customer_id: str):
+    cp = get_checkpointer()
+    config = {"configurable": {"thread_id": str(customer_id)}}
+    t = cp.get_tuple(config)
+    if t is None:
+        return []
+    return t.checkpoint.get("channel_values", {}).get("messages", []) or []
 
-def save_memory(messages, customer_id: str, checkpointer=None):
-    """Reservado: guardar/recortar cuando llegue a 10 (siguiente paso)."""
 
+def save_conversation(customer_id: str):
+    """guardado de conversaciones"""
+    mensajes = get_full_conversation(customer_id)
     cp = get_checkpointer()
