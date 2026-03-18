@@ -20,7 +20,7 @@ services:
     image: postgres:15
     container_name: conversations_db
     ports:
-    - 5433:5433
+    - 5433:5432
     environment:
       POSTGRES_USER: admin-llm
       POSTGRES_PASSWORD: admin-llm

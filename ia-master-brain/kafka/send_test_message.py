@@ -16,7 +16,7 @@ TOPIC_RESPUESTAS = "respuestas.agente"
 
 
 def main():
-    contenido = sys.argv[1] if len(sys.argv) > 1 else "¿mmm hable sobre los servicios de internet, por que es tan caro??"
+    contenido = sys.argv[1] if len(sys.argv) > 1 else "¿si quisiera reclamar la factura, por que no puedo pagarla??"
     customer_id = sys.argv[2] if len(sys.argv) > 2 else "1"
 
     payload = {
