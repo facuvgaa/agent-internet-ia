@@ -2,7 +2,6 @@ package com.cliente.cliente_back.controllers;
 
 import java.util.List;
 
-import org.apache.catalina.connector.Response;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,10 +13,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.cliente.cliente_back.dto.BillingDTO;
 import com.cliente.cliente_back.dto.CustomerDTO;
+import com.cliente.cliente_back.dto.PaymentPromiseDTO;
 import com.cliente.cliente_back.dto.ServicesDTO;
 import com.cliente.cliente_back.dto.TicketRequestDTO;
 import com.cliente.cliente_back.services.BillingService;
 import com.cliente.cliente_back.services.CustomerService;
+import com.cliente.cliente_back.services.PaymentPromiseService;
 import com.cliente.cliente_back.services.ServicesService;
 import com.cliente.cliente_back.services.TicketRequestService;
 
@@ -33,6 +34,7 @@ public class InternetClaimController {
     private final ServicesService servicesService;
     private final TicketRequestService ticketRequestService;
     private final BillingService billingService;
+    private final PaymentPromiseService paymentPromiseService;
 
     @GetMapping("/customers/{customerId}")
     public ResponseEntity<CustomerDTO> getCustomer(@PathVariable Long customerId){
@@ -61,5 +63,11 @@ public class InternetClaimController {
         return billings.isEmpty()
             ? ResponseEntity.notFound().build()
             : ResponseEntity.ok(billings);
+    }
+
+    @PostMapping("/payment-promises")
+    public ResponseEntity<PaymentPromiseDTO> createPaymentPromise(@RequestBody PaymentPromiseDTO request) {
+        PaymentPromiseDTO created = paymentPromiseService.createPromise(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 } 
