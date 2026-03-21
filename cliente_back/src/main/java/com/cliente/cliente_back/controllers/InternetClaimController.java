@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.cliente.cliente_back.dto.BillingDTO;
 import com.cliente.cliente_back.dto.CustomerDTO;
+import com.cliente.cliente_back.dto.NetworkDiagnosticRequestDTO;
 import com.cliente.cliente_back.dto.NetworkDiagnosticResponseDTO;
 import com.cliente.cliente_back.dto.PaymentPromiseDTO;
 import com.cliente.cliente_back.dto.ServicesDTO;
@@ -72,6 +73,18 @@ public class InternetClaimController {
     public ResponseEntity<PaymentPromiseDTO> createPaymentPromise(@RequestBody PaymentPromiseDTO request) {
         PaymentPromiseDTO created = paymentPromiseService.createPromise(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @PostMapping("/network-diagnostics")
+    public ResponseEntity<NetworkDiagnosticResponseDTO> runNetworkDiagnostic(
+            @RequestBody NetworkDiagnosticRequestDTO request) {
+        try {
+            NetworkDiagnosticResponseDTO created = networkDiagnosticService.runDiagnostic(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        } catch (IllegalArgumentException ex) {
+            log.warn("runNetworkDiagnostic: {}", ex.getMessage());
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @GetMapping("/network-diagnostics/customers/{customerId}/services/{serviceId}")
