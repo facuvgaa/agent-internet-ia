@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.cliente.cliente_back.dto.BillingDTO;
@@ -20,6 +21,10 @@ import com.cliente.cliente_back.dto.MobileTopUpResponseDTO;
 import com.cliente.cliente_back.dto.NetworkDiagnosticRequestDTO;
 import com.cliente.cliente_back.dto.NetworkDiagnosticResponseDTO;
 import com.cliente.cliente_back.dto.PaymentPromiseDTO;
+import com.cliente.cliente_back.dto.RetentionEligibilityResponseDTO;
+import com.cliente.cliente_back.dto.RetentionPreviewRequestDTO;
+import com.cliente.cliente_back.dto.RetentionPreviewResponseDTO;
+import com.cliente.cliente_back.dto.RetentionTierDTO;
 import com.cliente.cliente_back.dto.ServicesDTO;
 import com.cliente.cliente_back.dto.TicketRequestDTO;
 import com.cliente.cliente_back.services.BillingService;
@@ -28,6 +33,7 @@ import com.cliente.cliente_back.services.CustomerService;
 import com.cliente.cliente_back.services.MobileTopUpEntityService;
 import com.cliente.cliente_back.services.NetworkDiagnosticService;
 import com.cliente.cliente_back.services.PaymentPromiseService;
+import com.cliente.cliente_back.services.RetentionOfferService;
 import com.cliente.cliente_back.services.ServicesService;
 import com.cliente.cliente_back.services.TicketRequestService;
 
@@ -47,6 +53,7 @@ public class InternetClaimController {
     private final NetworkDiagnosticService networkDiagnosticService;
     private final ConnectionResetService connectionResetService;
     private final MobileTopUpEntityService mobileTopUpEntityService;
+    private final RetentionOfferService retentionOfferService;
 
     @GetMapping("/customers/{customerId}")
     public ResponseEntity<CustomerDTO> getCustomer(@PathVariable Long customerId){
@@ -81,6 +88,29 @@ public class InternetClaimController {
     public ResponseEntity<PaymentPromiseDTO> createPaymentPromise(@RequestBody PaymentPromiseDTO request) {
         PaymentPromiseDTO created = paymentPromiseService.createPromise(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @GetMapping("/retention/tiers")
+    public ResponseEntity<List<RetentionTierDTO>> listRetentionTiers() {
+        return ResponseEntity.ok(retentionOfferService.listTiers());
+    }
+
+    @GetMapping("/retention/customers/{customerId}/eligibility")
+    public ResponseEntity<RetentionEligibilityResponseDTO> getRetentionEligibility(
+            @PathVariable Long customerId,
+            @RequestParam(required = false) Long serviceId) {
+        return ResponseEntity.ok(retentionOfferService.getEligibility(customerId, serviceId));
+    }
+
+    @PostMapping("/retention/preview")
+    public ResponseEntity<RetentionPreviewResponseDTO> previewRetentionOffer(
+            @RequestBody RetentionPreviewRequestDTO request) {
+        try {
+            return ResponseEntity.ok(retentionOfferService.preview(request));
+        } catch (IllegalArgumentException ex) {
+            log.warn("previewRetentionOffer: {}", ex.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @PostMapping("/mobile-topups")
