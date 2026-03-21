@@ -24,7 +24,7 @@ public class ServicesEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)
-    private CustomerEntity customer;
+    private CustomerEntity customerId;
 
     @Column(nullable = false)
     private String serviceName;

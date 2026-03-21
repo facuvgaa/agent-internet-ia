@@ -13,11 +13,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.cliente.cliente_back.dto.BillingDTO;
 import com.cliente.cliente_back.dto.CustomerDTO;
+import com.cliente.cliente_back.dto.NetworkDiagnosticResponseDTO;
 import com.cliente.cliente_back.dto.PaymentPromiseDTO;
 import com.cliente.cliente_back.dto.ServicesDTO;
 import com.cliente.cliente_back.dto.TicketRequestDTO;
 import com.cliente.cliente_back.services.BillingService;
 import com.cliente.cliente_back.services.CustomerService;
+import com.cliente.cliente_back.services.NetworkDiagnosticService;
 import com.cliente.cliente_back.services.PaymentPromiseService;
 import com.cliente.cliente_back.services.ServicesService;
 import com.cliente.cliente_back.services.TicketRequestService;
@@ -35,6 +37,7 @@ public class InternetClaimController {
     private final TicketRequestService ticketRequestService;
     private final BillingService billingService;
     private final PaymentPromiseService paymentPromiseService;
+    private final NetworkDiagnosticService networkDiagnosticService;
 
     @GetMapping("/customers/{customerId}")
     public ResponseEntity<CustomerDTO> getCustomer(@PathVariable Long customerId){
@@ -69,5 +72,35 @@ public class InternetClaimController {
     public ResponseEntity<PaymentPromiseDTO> createPaymentPromise(@RequestBody PaymentPromiseDTO request) {
         PaymentPromiseDTO created = paymentPromiseService.createPromise(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @GetMapping("/network-diagnostics/customers/{customerId}/services/{serviceId}")
+    public ResponseEntity<List<NetworkDiagnosticResponseDTO>> listNetworkDiagnostics(
+            @PathVariable Long customerId,
+            @PathVariable Long serviceId) {
+        try {
+            var list = networkDiagnosticService.findByCustomerIdAndServiceIdOrderByCreatedAtDesc(
+                    customerId, serviceId);
+            return list.isEmpty()
+                    ? ResponseEntity.notFound().build()
+                    : ResponseEntity.ok(list);
+        } catch (IllegalArgumentException ex) {
+            log.warn("listNetworkDiagnostics: {}", ex.getMessage());
+            return ResponseEntity.notFound().build();
+        }
+    }
+    @GetMapping("/network-diagnostics/customers/{customerId}/services/{serviceId}/latest")
+    public ResponseEntity<NetworkDiagnosticResponseDTO> getLatestNetworkDiagnostic(
+            @PathVariable Long customerId,
+            @PathVariable Long serviceId) {
+        try {
+            return networkDiagnosticService
+                    .findFirstByCustomerIdAndServiceIdOrderByCreatedAtDesc(customerId, serviceId)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException ex) {
+            log.warn("getLatestNetworkDiagnostic: {}", ex.getMessage());
+            return ResponseEntity.notFound().build();
+        }
     }
 } 
