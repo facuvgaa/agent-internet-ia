@@ -4,9 +4,10 @@ import java.math.BigDecimal;
 
 public record MobileTopUpRequestDTO(
     Long customerId,
+    String msisdn,
     BigDecimal amount,
-    String currency,        
-    String reason,            
+    String currency,
+    String reason,
     String relatedIncidentId,
-    Long relatedBillingId     
+    Long relatedBillingId
 ) {}

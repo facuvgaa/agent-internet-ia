@@ -1,11 +1,14 @@
 package com.cliente.cliente_back.dto;
 
-public record MobileTopUpResponseDTO( 
+import java.math.BigDecimal;
+public record MobileTopUpResponseDTO(
     String benefitId,
     Long customerId,
-    java.math.BigDecimal amount,
+    String msisdn,
+    BigDecimal amount,
     String currency,
     BenefitStatus status,
-    String validUntil,     
+    String validUntil,
+    String nextEligibleAt,
     String message
 ) {}

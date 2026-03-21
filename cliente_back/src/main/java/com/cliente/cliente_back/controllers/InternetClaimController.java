@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.cliente.cliente_back.dto.BillingDTO;
+import com.cliente.cliente_back.dto.ConnectionResetRequestDTO;
+import com.cliente.cliente_back.dto.ConnectionResetResponseDTO;
 import com.cliente.cliente_back.dto.CustomerDTO;
 import com.cliente.cliente_back.dto.NetworkDiagnosticRequestDTO;
 import com.cliente.cliente_back.dto.NetworkDiagnosticResponseDTO;
@@ -19,6 +21,7 @@ import com.cliente.cliente_back.dto.PaymentPromiseDTO;
 import com.cliente.cliente_back.dto.ServicesDTO;
 import com.cliente.cliente_back.dto.TicketRequestDTO;
 import com.cliente.cliente_back.services.BillingService;
+import com.cliente.cliente_back.services.ConnectionResetService;
 import com.cliente.cliente_back.services.CustomerService;
 import com.cliente.cliente_back.services.NetworkDiagnosticService;
 import com.cliente.cliente_back.services.PaymentPromiseService;
@@ -39,6 +42,7 @@ public class InternetClaimController {
     private final BillingService billingService;
     private final PaymentPromiseService paymentPromiseService;
     private final NetworkDiagnosticService networkDiagnosticService;
+    private final ConnectionResetService connectionResetService;
 
     @GetMapping("/customers/{customerId}")
     public ResponseEntity<CustomerDTO> getCustomer(@PathVariable Long customerId){
@@ -73,6 +77,18 @@ public class InternetClaimController {
     public ResponseEntity<PaymentPromiseDTO> createPaymentPromise(@RequestBody PaymentPromiseDTO request) {
         PaymentPromiseDTO created = paymentPromiseService.createPromise(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @PostMapping("/connection-resets")
+    public ResponseEntity<ConnectionResetResponseDTO> requestConnectionReset(
+            @RequestBody ConnectionResetRequestDTO request) {
+        try {
+            ConnectionResetResponseDTO created = connectionResetService.requestReset(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        } catch (IllegalArgumentException ex) {
+            log.warn("requestConnectionReset: {}", ex.getMessage());
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PostMapping("/network-diagnostics")
