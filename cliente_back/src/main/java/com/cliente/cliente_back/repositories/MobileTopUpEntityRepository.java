@@ -13,4 +13,5 @@ public interface MobileTopUpEntityRepository extends JpaRepository<MobileTopUpEn
             Long customerId,
             String msisdn,
             BenefitStatus status);
+    boolean existsByTicketId(Long ticketId);
 }

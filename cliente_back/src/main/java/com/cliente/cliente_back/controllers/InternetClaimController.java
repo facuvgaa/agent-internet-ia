@@ -15,6 +15,8 @@ import com.cliente.cliente_back.dto.BillingDTO;
 import com.cliente.cliente_back.dto.ConnectionResetRequestDTO;
 import com.cliente.cliente_back.dto.ConnectionResetResponseDTO;
 import com.cliente.cliente_back.dto.CustomerDTO;
+import com.cliente.cliente_back.dto.MobileTopUpRequestDTO;
+import com.cliente.cliente_back.dto.MobileTopUpResponseDTO;
 import com.cliente.cliente_back.dto.NetworkDiagnosticRequestDTO;
 import com.cliente.cliente_back.dto.NetworkDiagnosticResponseDTO;
 import com.cliente.cliente_back.dto.PaymentPromiseDTO;
@@ -23,6 +25,7 @@ import com.cliente.cliente_back.dto.TicketRequestDTO;
 import com.cliente.cliente_back.services.BillingService;
 import com.cliente.cliente_back.services.ConnectionResetService;
 import com.cliente.cliente_back.services.CustomerService;
+import com.cliente.cliente_back.services.MobileTopUpEntityService;
 import com.cliente.cliente_back.services.NetworkDiagnosticService;
 import com.cliente.cliente_back.services.PaymentPromiseService;
 import com.cliente.cliente_back.services.ServicesService;
@@ -43,6 +46,7 @@ public class InternetClaimController {
     private final PaymentPromiseService paymentPromiseService;
     private final NetworkDiagnosticService networkDiagnosticService;
     private final ConnectionResetService connectionResetService;
+    private final MobileTopUpEntityService mobileTopUpEntityService;
 
     @GetMapping("/customers/{customerId}")
     public ResponseEntity<CustomerDTO> getCustomer(@PathVariable Long customerId){
@@ -77,6 +81,17 @@ public class InternetClaimController {
     public ResponseEntity<PaymentPromiseDTO> createPaymentPromise(@RequestBody PaymentPromiseDTO request) {
         PaymentPromiseDTO created = paymentPromiseService.createPromise(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @PostMapping("/mobile-topups")
+    public ResponseEntity<MobileTopUpResponseDTO> grantMobileTopUp(@RequestBody MobileTopUpRequestDTO request) {
+        try {
+            MobileTopUpResponseDTO created = mobileTopUpEntityService.grantTopUp(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        } catch (IllegalArgumentException ex) {
+            log.warn("grantMobileTopUp: {}", ex.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @PostMapping("/connection-resets")
