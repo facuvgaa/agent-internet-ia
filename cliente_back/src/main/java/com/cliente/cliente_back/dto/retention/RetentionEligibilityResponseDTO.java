@@ -1,10 +1,7 @@
-package com.cliente.cliente_back.dto;
+package com.cliente.cliente_back.dto.retention;
 
 import java.util.List;
 
-/**
- * Qué niveles puede cotizar/aplicar el agente para este cliente (y servicio, si se informó).
- */
 public record RetentionEligibilityResponseDTO(
         Long customerId,
         Long serviceId,

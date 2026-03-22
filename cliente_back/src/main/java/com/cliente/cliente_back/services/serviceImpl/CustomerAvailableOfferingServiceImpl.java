@@ -32,7 +32,7 @@ public class CustomerAvailableOfferingServiceImpl implements CustomerAvailableOf
             throw new IllegalArgumentException("Cliente no encontrado");
         }
 
-        List<ServicesEntity> customerServices = serviceRepository.findByCustomer_Id(customerId);
+        List<ServicesEntity> customerServices = serviceRepository.findByCustomerId_Id(customerId);
 
         List<AvailableOfferingItemDTO> items =
                 Arrays.stream(AvailableOfferingSpec.values())

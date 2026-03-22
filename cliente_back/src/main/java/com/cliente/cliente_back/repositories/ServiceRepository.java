@@ -7,5 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.cliente.cliente_back.entities.ServicesEntity;
 
 public interface ServiceRepository extends JpaRepository <ServicesEntity, Long> {
-    List<ServicesEntity> findByCustomer_Id(Long customerId);
+    /** {@link com.cliente.cliente_back.entities.ServicesEntity#getCustomerId()} es el {@code ManyToOne}, no existe propiedad {@code customer}. */
+    List<ServicesEntity> findByCustomerId_Id(Long customerId);
 }

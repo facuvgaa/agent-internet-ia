@@ -8,10 +8,10 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
-import com.cliente.cliente_back.dto.RetentionEligibilityResponseDTO;
-import com.cliente.cliente_back.dto.RetentionPreviewRequestDTO;
-import com.cliente.cliente_back.dto.RetentionPreviewResponseDTO;
-import com.cliente.cliente_back.dto.RetentionTierDTO;
+import com.cliente.cliente_back.dto.retention.RetentionEligibilityResponseDTO;
+import com.cliente.cliente_back.dto.retention.RetentionPreviewRequestDTO;
+import com.cliente.cliente_back.dto.retention.RetentionPreviewResponseDTO;
+import com.cliente.cliente_back.dto.retention.RetentionTierDTO;
 import com.cliente.cliente_back.entities.ServicesEntity;
 import com.cliente.cliente_back.repositories.CustomerRepository;
 import com.cliente.cliente_back.repositories.ServiceRepository;

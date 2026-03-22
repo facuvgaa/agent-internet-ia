@@ -20,7 +20,7 @@ public class ServicesServiceImpl implements ServicesService {
     private final ServiceMapper serviceMapper;
     @Override
     public List<ServicesDTO> findAllByCustomerId(Long customerId) {
-        return serviceRepository.findByCustomer_Id(customerId)
+        return serviceRepository.findByCustomerId_Id(customerId)
                 .stream()
                 .map(serviceMapper::toDto)
                 .toList();

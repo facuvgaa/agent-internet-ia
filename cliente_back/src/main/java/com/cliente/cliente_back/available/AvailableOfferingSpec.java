@@ -3,11 +3,6 @@ package com.cliente.cliente_back.available;
 import java.util.Arrays;
 import java.util.Optional;
 
-/**
- * Catálogo de servicios/adicionales que el cliente puede contratar.
- * La elegibilidad se calcula contando servicios activos del cliente cuyo
- * {@code serviceType} coincide (ignorando mayúsculas) con {@link #existingServiceTypeMatch()}.
- */
 public enum AvailableOfferingSpec {
 
     NETFLIX_PACK(

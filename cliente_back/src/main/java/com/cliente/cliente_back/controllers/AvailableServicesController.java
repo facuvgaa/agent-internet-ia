@@ -12,6 +12,7 @@ import com.cliente.cliente_back.services.CustomerAvailableOfferingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+
 @RestController
 @RequestMapping("/api/v1/available-services")
 @RequiredArgsConstructor

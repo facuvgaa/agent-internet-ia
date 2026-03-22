@@ -1,3 +1,41 @@
-from .tools import get_customer_info, get_customer_service, create_ticket
+from .tools import (
+    ALL_BRAIN_TOOLS,
+    apply_retention_agreement,
+    billing_info,
+    create_ticket,
+    get_customer_info,
+    get_customer_service,
+    get_latest_network_diagnostic,
+    get_retention_eligibility,
+    get_retention_preview,
+    get_retention_tiers,
+    grant_mobile_topup,
+    list_available_offerings,
+    list_network_diagnostics,
+    payment_promises,
+    request_connection_reset,
+    run_network_diagnostic,
+)
 
-tools = [get_customer_info, get_customer_service, create_ticket]
+# Compatibilidad con imports antiguos
+tools = ALL_BRAIN_TOOLS
+
+__all__ = [
+    "ALL_BRAIN_TOOLS",
+    "tools",
+    "get_customer_info",
+    "get_customer_service",
+    "create_ticket",
+    "billing_info",
+    "payment_promises",
+    "grant_mobile_topup",
+    "request_connection_reset",
+    "run_network_diagnostic",
+    "list_network_diagnostics",
+    "get_latest_network_diagnostic",
+    "get_retention_tiers",
+    "get_retention_eligibility",
+    "get_retention_preview",
+    "apply_retention_agreement",
+    "list_available_offerings",
+]

@@ -2,10 +2,10 @@ package com.cliente.cliente_back.services;
 
 import java.util.List;
 
-import com.cliente.cliente_back.dto.RetentionEligibilityResponseDTO;
-import com.cliente.cliente_back.dto.RetentionPreviewRequestDTO;
-import com.cliente.cliente_back.dto.RetentionPreviewResponseDTO;
-import com.cliente.cliente_back.dto.RetentionTierDTO;
+import com.cliente.cliente_back.dto.retention.RetentionEligibilityResponseDTO;
+import com.cliente.cliente_back.dto.retention.RetentionPreviewRequestDTO;
+import com.cliente.cliente_back.dto.retention.RetentionPreviewResponseDTO;
+import com.cliente.cliente_back.dto.retention.RetentionTierDTO;
 
 public interface RetentionOfferService {
 

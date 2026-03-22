@@ -9,7 +9,7 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 from memory.memory_brain import get_checkpointer, get_memory, save_conversation
 from connection_llm.llm_conecction import get_bedrock_model_brain as llm_brain
-from tools import create_ticket,get_customer_service,get_customer_info
+from tools import ALL_BRAIN_TOOLS
 
 from context_llm.contexts import agent_facturacion
 
@@ -28,7 +28,7 @@ class AgentState(TypedDict):
 
 class LlmBrain:
     def __init__(self) -> None:
-        self.tools = [create_ticket,get_customer_service,get_customer_info]
+        self.tools = list(ALL_BRAIN_TOOLS)
         self.model = llm_brain().bind_tools(self.tools)
         self.workflow = None
         self.checkpointer = get_checkpointer()
