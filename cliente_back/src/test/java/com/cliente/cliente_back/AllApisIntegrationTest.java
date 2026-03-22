@@ -86,6 +86,7 @@ class AllApisIntegrationTest {
 
         BillingEntity b = new BillingEntity();
         b.setCustomerId(customerId);
+        b.setInvoiceNumber("FAC-TEST-001");
         b.setTotalAmount(new BigDecimal("5000.00"));
         b.setDueDate(LocalDate.now().plusDays(15));
         b.setIssueDate(LocalDate.now());
@@ -242,6 +243,42 @@ class AllApisIntegrationTest {
             mockMvc.perform(get("/api/v1/internet-ia/billing/customer/" + customerId))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$", hasSize(1)));
+        }
+
+        @Test
+        void lookupBilling_byInternalId_ok() throws Exception {
+            mockMvc.perform(
+                            get("/api/v1/internet-ia/billing/customer/" + customerId + "/lookup")
+                                    .param("invoiceNumber", String.valueOf(billingId)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(billingId))
+                    .andExpect(jsonPath("$.invoiceNumber").value("FAC-TEST-001"));
+        }
+
+        @Test
+        void lookupBilling_byPrintedNumber_ok() throws Exception {
+            mockMvc.perform(
+                            get("/api/v1/internet-ia/billing/customer/" + customerId + "/lookup")
+                                    .param("invoiceNumber", "fac-test-001"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(billingId));
+        }
+
+        @Test
+        void lookupBilling_byPeriodLabel_ok() throws Exception {
+            mockMvc.perform(
+                            get("/api/v1/internet-ia/billing/customer/" + customerId + "/lookup")
+                                    .param("invoiceNumber", "2026-03"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.periodLabel").value("2026-03"));
+        }
+
+        @Test
+        void lookupBilling_notFound() throws Exception {
+            mockMvc.perform(
+                            get("/api/v1/internet-ia/billing/customer/" + customerId + "/lookup")
+                                    .param("invoiceNumber", "NO-EXISTE"))
+                    .andExpect(status().isNotFound());
         }
 
         @Test

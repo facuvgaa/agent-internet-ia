@@ -4,8 +4,9 @@ import java.time.LocalDate;
 import java.util.List;
 
 public record BillingDTO(
-    Long id,                 
-    Long customerId,           
+    Long id,
+    Long customerId,
+    String invoiceNumber,
     BigDecimal totalAmount,  
     LocalDate dueDate,       
     LocalDate issueDate,     

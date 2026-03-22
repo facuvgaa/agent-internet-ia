@@ -5,6 +5,7 @@ import java.time.LocalDate;
 
 import com.cliente.cliente_back.dto.BillingStatus;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -23,6 +24,12 @@ public class BillingEntity {
     private long id;
 
     private long customerId;
+
+    /**
+     * Número impreso en la factura (PDF/captura). Si es null, se puede buscar por id interno o periodLabel.
+     */
+    @Column(name = "invoice_number", length = 64)
+    private String invoiceNumber;
 
     private BigDecimal totalAmount; 
     private LocalDate dueDate;  

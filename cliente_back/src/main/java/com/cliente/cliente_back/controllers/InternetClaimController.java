@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.cliente.cliente_back.dto.BillingDTO;
@@ -75,6 +76,19 @@ public class InternetClaimController {
         return billings.isEmpty()
             ? ResponseEntity.notFound().build()
             : ResponseEntity.ok(billings);
+    }
+    @GetMapping("/billing/customer/{customerId}/lookup")
+    public ResponseEntity<BillingDTO> lookupBilling(
+            @PathVariable Long customerId, @RequestParam("invoiceNumber") String invoiceNumber) {
+        try {
+            return billingService
+                    .findBillingByCustomerAndInvoiceNumber(customerId, invoiceNumber)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException ex) {
+            log.warn("lookupBilling: {}", ex.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @PostMapping("/payment-promises")

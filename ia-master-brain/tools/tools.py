@@ -96,6 +96,31 @@ def billing_info(customer_id: int) -> dict:
 
 
 @tool
+def billing_lookup(customer_id: int, invoice_number: str) -> dict:
+    """
+    Busca una factura del cliente por número: id interno (solo dígitos), número impreso en la factura
+    o etiqueta de período. El texto puede venir de OCR/visión a partir de una foto de la factura.
+    """
+    url = f"{back_endpoint}/billing/customer/{customer_id}/lookup"
+    logger.info(
+        "[TOOL] billing_lookup(%s, %r) -> GET %s",
+        customer_id,
+        invoice_number,
+        url,
+    )
+    try:
+        response = requests.get(
+            url, params={"invoiceNumber": invoice_number}, timeout=10
+        )
+        data = _safe_json(response)
+        logger.info("[TOOL] billing_lookup OK status=%s", response.status_code)
+        return {"status_code": response.status_code, "data": data}
+    except Exception as e:
+        logger.error("[TOOL] billing_lookup FAILED: %s", e)
+        return {"error": str(e)}
+
+
+@tool
 def payment_promises(customer_id: int, billing_id: int, promise_until: str) -> str:
     """
     Registra compromiso de pago sobre una factura.
@@ -345,6 +370,7 @@ ALL_BRAIN_TOOLS = [
     get_customer_service,
     create_ticket,
     billing_info,
+    billing_lookup,
     payment_promises,
     grant_mobile_topup,
     request_connection_reset,
