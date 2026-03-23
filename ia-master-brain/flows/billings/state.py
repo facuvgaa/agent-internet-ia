@@ -1,17 +1,17 @@
-from typing import TypedDict, Optional, Annotated, List
+from typing import Annotated, TypedDict, List, Optional
 from langchain_core.messages import BaseMessage
-from langgraph.graph.message import add_messages
+from langgraph.graph import add_messages
 
 
-class BillingState(TypedDict):
-    customerId: int
+class BillingEstate(TypedDict):
+    customer_id = int
 
-    cliente:        Optional[dict]   
-    facturas:       Optional[list]   
-    factura_id:     Optional[int]    
-    ticket_id:      Optional[str]    
-    promesa_pago:   Optional[dict]   
+    client: Optional[dict]
+    facturas: Optional[list]
+    ticket_id: Optional[str]
 
-    paso_actual:    Optional[str]    
-    
-    messages: Annotated[List[BaseMessage], add_messages]
+    paso_actual: Optional[str]
+
+
+    messages: Annotated[str[BaseMessage], add_messages]
+
