@@ -9,6 +9,8 @@ class BillingEstate(TypedDict):
     cliente: Optional[dict]
     facturas: Optional[list]
     ticket_id: Optional[str]
+    motivo_reclamo: Optional[str]  
+    motivo_claro:   Optional[bool]  
 
     paso_actual: Optional[str]
 

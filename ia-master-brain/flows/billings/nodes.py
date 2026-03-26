@@ -114,28 +114,36 @@ def nodo_detectar_intencion(state: BillingEstate, model)-> dict:
     return {"paso_actual": intencion}
 
 
-def nodo_crear_ticket(state: BillingEstate, model)->dict:
-
-    customer_id = state["customer_id"]  
+def nodo_crear_ticket(state: BillingEstate, model) -> dict:
+    customer_id = state["customer_id"]
+    
+    # subject descriptivo generado por el LLM, no hardcodeado
+    motivo = state.get("motivo_reclamo") or "Reclamo por factura"
+    
+    # prioridad según el motivo
+    # si menciona dificultad económica o cargo no reconocido → HIGH
+    keywords_high = ["no reconoce", "no contrató", "no solicité", 
+                     "no pedí", "dificultad", "no puedo pagar"]
+    priority = "HIGH" if any(
+        k in motivo.lower() for k in keywords_high
+    ) else "MEDIUM"
 
     resultado = create_ticket.invoke({
         "customer_id": customer_id,
-        "subject": "reclamo de facturacion",
-        "priority": "MEDIUM",
+        "subject":     motivo,      # ← motivo real, no genérico
+        "priority":    priority     # ← prioridad según contexto
     })
 
     ticket_id = "N/D"
-
     if ":" in resultado:
-        ticket_id = resultado.split(":")[-1].strip().split()[0]
-    
-    logger.info("[NODO] ticket creado: %s", ticket_id)
+        ticket_id = resultado.split(":")[-1].strip().split(" ")[0]
 
+    logger.info("[NODO] ticket creado id=%s subject='%s'", ticket_id, motivo)
 
     return {
-        "ticket_id": ticket_id,
+        "ticket_id":   ticket_id,
         "paso_actual": "confirmar_ticket"
-    }   
+    }
 
 
 def nodo_confirmar_ticket(state: BillingEstate, model)->dict:
@@ -158,4 +166,80 @@ def nodo_confirmar_ticket(state: BillingEstate, model)->dict:
     return {
         "messages": [response],
         "paso_actual": "cerrado",
+    }
+
+def nodo_extraer_motivo(state: BillingEstate, model) -> dict:
+    """
+    Nodo TEAL — analiza toda la conversación y extrae el motivo real.
+    Si el cliente fue cortante, detecta que no hay suficiente contexto.
+    """
+    # tomar toda la conversación, no solo el último mensaje
+    conversacion = "\n".join([
+        f"{'Cliente' if isinstance(m, HumanMessage) else 'Agente'}: {m.content}"
+        for m in state["messages"]
+    ])
+
+    respuesta = model.invoke([
+        SystemMessage(content="""Analizá esta conversación entre un cliente y un agente.
+Extraé el motivo específico del reclamo del cliente.
+
+Respondé en formato JSON exacto:
+{
+  "motivo": "descripción específica del problema",
+  "claro": true/false
+}
+
+claro = true si el cliente explicó específicamente qué está mal.
+claro = false si solo dijo "quiero reclamar" o algo igual de vago.
+
+Ejemplos de motivo claro:
+- "Cliente recibió factura de $11.800 pero el mes pasado fue $8.500, 
+   cree que le cobraron servicios que no contrató"
+- "Cliente tiene cargo de IP Fija que dice nunca haber solicitado"
+
+Ejemplos de motivo NO claro:
+- "quiero reclamar"
+- "no estoy de acuerdo"
+- "está mal"
+
+Respondé SOLO con el JSON, sin texto adicional."""),
+        HumanMessage(content=conversacion)
+    ])
+
+    import json as _json
+    try:
+        data = _json.loads(respuesta.content.strip())
+        motivo = data.get("motivo", "")
+        claro  = data.get("claro", False)
+    except Exception:
+        motivo = ""
+        claro  = False
+
+    logger.info("[NODO] motivo='%s' claro=%s", motivo, claro)
+
+    return {
+        "motivo_reclamo": motivo,
+        "motivo_claro":   claro
+    }
+
+
+def nodo_pedir_detalle(state: BillingEstate, model) -> dict:
+    """
+    Nodo PURPLE — el cliente fue cortante, el LLM le pide más contexto
+    antes de crear el ticket.
+    """
+    nombre = state["cliente"].get("name") or "cliente"
+
+    system = SystemMessage(content=f"""Sos un agente de soporte de telecomunicaciones.
+Atendés a {nombre}.
+El cliente quiere hacer un reclamo pero no explicó bien el motivo.
+Pedile amablemente que te cuente con más detalle qué está mal:
+¿es un cargo que no reconoce? ¿el monto es más alto que otros meses?
+¿hay un servicio que no contrató? Sé breve y específico en la pregunta.""")
+
+    response = model.invoke([system, *state["messages"]])
+
+    return {
+        "messages":    [response],
+        "paso_actual": "esperando_detalle"
     }
