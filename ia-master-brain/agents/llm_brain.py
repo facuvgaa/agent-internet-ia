@@ -26,7 +26,10 @@ class AgentState(TypedDict):
 class LlmBrain:
     def __init__(self) -> None:
         self.tools = ALL_BRAIN_TOOLS
-        self.model = llm_brain().bind_tools(self.tools)
+        # Mismo LLM: con tools solo para el grafo principal (ToolNode completa tool_use→tool_result).
+        # El subgrafo de facturación usa el modelo sin tools: si no, Bedrock exige tool_result tras cada tool_use.
+        self._llm_base = llm_brain()
+        self.model = self._llm_base.bind_tools(self.tools)
         self.workflow = None
         self.checkpointer = get_checkpointer()
         self.factura_graph = None
@@ -54,28 +57,32 @@ class LlmBrain:
 
         self.workflow = graph.compile(checkpointer=self.checkpointer)
 
-        self.factura_graph = build_factura_graph(self.model)  # ← nuevo
+        self.factura_graph = build_factura_graph(self._llm_base)
 
         logger.info("Brain listo con tools y subgrafos.")
 
     
     def _assistance_node(self, state: AgentState) -> dict:
         customer_id = state["metadata"].get("customer_id", "desconocido")
-        system = SystemMessage(content= agent_facturacion)
+        system = SystemMessage(
+            content=agent_facturacion().format(customer_id=customer_id)
+        )
         response = self.model.invoke([system, *state["messages"]])
         return {"messages": [response]}
 
     def run(self, input_text: str, customer_id: str):
         if not self.workflow:
             raise RuntimeError("Brain no inicializado; llamá a brain() primero.")
+        t = input_text.lower()
         keywords_factura = [
-            "factura", "cobro", "pago", "deuda",
-            "monto", "precio", "caro", "alto"
+            "factura", "facturación", "cobro", "cobros", "pago", "pagos", "deuda",
+            "monto", "precio", "caro", "alto",
+            "reclamo", "reclamar", "reclamación",
+            "mora", "moratorio", "moratoria", "morosidad",
+            "interés", "intereses", "interes",
+            "vencida", "vencido", "vencimiento", "vence",
         ]
-        es_factura = any(
-            k in input_text.lower()
-            for k in keywords_factura
-        )
+        es_factura = any(k in t for k in keywords_factura)
 
         if es_factura and self.factura_graph:
             logger.info("[BRAIN] derivando a subgrafo factura")

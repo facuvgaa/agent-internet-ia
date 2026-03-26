@@ -31,7 +31,9 @@ public class PaymentPromiseServiceImpl implements PaymentPromiseService {
         BillingEntity billing = billingRepository.findById(dto.billingId())
             .orElseThrow(() -> new IllegalArgumentException("No existe la factura indicada"));
 
-        if (billing.getCustomerId() != dto.customerId()) {
+        if (dto.customerId() == null
+                || billing.getCustomerId() == null
+                || !billing.getCustomerId().equals(String.valueOf(dto.customerId()))) {
             throw new IllegalArgumentException("La factura no pertenece al customerId indicado");
         }
 

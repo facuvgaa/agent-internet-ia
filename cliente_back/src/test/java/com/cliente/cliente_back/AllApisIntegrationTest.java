@@ -85,7 +85,7 @@ class AllApisIntegrationTest {
         serviceId = s.getId();
 
         BillingEntity b = new BillingEntity();
-        b.setCustomerId(customerId);
+        b.setCustomerId(String.valueOf(customerId));
         b.setInvoiceNumber("FAC-TEST-001");
         b.setTotalAmount(new BigDecimal("5000.00"));
         b.setDueDate(LocalDate.now().plusDays(15));

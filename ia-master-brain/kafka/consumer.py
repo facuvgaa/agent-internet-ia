@@ -60,15 +60,38 @@ RESPUESTAS_TOPIC = 'respuestas.agente'
 consumer.subscribe(['consultas.usuario'])
 
 # --- HELPERS ---
+def _coerce_message_content(content) -> str:
+    """Bedrock/Converse puede devolver content como str o lista de bloques."""
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for block in content:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, dict):
+                t = block.get("text") or block.get("content")
+                if isinstance(t, str):
+                    parts.append(t)
+            else:
+                parts.append(str(block))
+        return "".join(parts)
+    return str(content)
+
+
 def _last_ai_content(messages) -> str:
     from langchain_core.messages import AIMessage
     for m in reversed(messages):
         if isinstance(m, AIMessage) and m.content:
-            return m.content
+            return _coerce_message_content(m.content)
     return ""
 
-def _clean_response(text: str) -> str:
-    if not text: return ""
+def _clean_response(text) -> str:
+    text = _coerce_message_content(text)
+    if not text:
+        return ""
     text = re.sub(
         r"<(function_calls|invoke)>.*?</\1>", "",
         text, flags=re.DOTALL | re.IGNORECASE

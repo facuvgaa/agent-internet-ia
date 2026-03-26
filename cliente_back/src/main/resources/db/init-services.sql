@@ -44,3 +44,5 @@ UPDATE services SET customer_id = 1 WHERE customer_id IS NULL;
 
 -- Ajustar secuencia por si se insertó con id fijo
 SELECT setval('services_id_seq', (SELECT COALESCE(MAX(id), 1) FROM services));
+
+-- Facturas de ejemplo: ver seed-facturacion.sql (la tabla facturacion no se puebla aquí).

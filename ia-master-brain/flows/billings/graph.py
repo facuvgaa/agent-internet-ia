@@ -21,11 +21,10 @@ def build_factura_graph(model):
     def _confirmar_ticket(state): return nodo_confirmar_ticket(state, model)
 
 
-    def decidir(state: BillingEstate)-> str:
-        paso = state.get("paso_actual", "")
-        if paso == "reclamar": return "crear_ticket"
-        if paso == "pagar":    return END   
-        if paso == "cerrado":  return END
+    def decidir(state: BillingEstate):
+        paso = (state.get("paso_actual") or "").strip().lower()
+        if paso == "reclamar":
+            return "crear_ticket"
         return END
 
     builder = StateGraph(BillingEstate)
@@ -42,18 +41,13 @@ def build_factura_graph(model):
 
     builder.add_edge("cargar_datos", "explicar_facturas")
     builder.add_edge("explicar_facturas", "detectar_intencion")
-    builder.add_edge("detectar_intencion", "crear_ticket")
+    builder.add_conditional_edges(
+        "detectar_intencion",
+        decidir,
+        {"crear_ticket": "crear_ticket", END: END},
+    )
     builder.add_edge("crear_ticket", "confirmar_ticket")
     builder.add_edge("confirmar_ticket", END)
-
-
-    builder.add_conditional_edges = (
-        "detectar_interaccion", decidir,{
-            "crear_ticket": "crear_ticket",
-            END:        END
-
-        }
-    )
 
     return builder.compile()
 

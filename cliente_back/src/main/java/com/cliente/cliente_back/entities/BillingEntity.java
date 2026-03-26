@@ -23,7 +23,9 @@ public class BillingEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
-    private long customerId;
+    /** En BD puede ser VARCHAR; Hibernate debe usar el mismo tipo que la columna. */
+    @Column(name = "customer_id", nullable = false)
+    private String customerId;
 
     /**
      * Número impreso en la factura (PDF/captura). Si es null, se puede buscar por id interno o periodLabel.

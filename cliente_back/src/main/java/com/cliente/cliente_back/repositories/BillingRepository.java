@@ -9,9 +9,9 @@ import com.cliente.cliente_back.entities.BillingEntity;
 
 public interface BillingRepository extends JpaRepository<BillingEntity, Long> {
 
-    List<BillingEntity> findByCustomerId(Long customerId);
+    List<BillingEntity> findByCustomerId(String customerId);
 
-    Optional<BillingEntity> findByCustomerIdAndId(long customerId, long id);
+    Optional<BillingEntity> findByCustomerIdAndId(String customerId, long id);
 
-    Optional<BillingEntity> findByCustomerIdAndInvoiceNumberIgnoreCase(long customerId, String invoiceNumber);
+    Optional<BillingEntity> findByCustomerIdAndInvoiceNumberIgnoreCase(String customerId, String invoiceNumber);
 }
