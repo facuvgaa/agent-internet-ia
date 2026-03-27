@@ -17,15 +17,16 @@ Al final preguntale si quiere hacer un reclamo formal
 o si prefiere acordar una fecha de pago."""
 
 
-# Nodo 3: detectar qué quiere hacer el cliente
-# Este prompt es especial: el LLM responde UNA SOLA PALABRA
 DETECTAR_INTENCION = """Analizá el mensaje del cliente y respondé
 ÚNICAMENTE con una de estas palabras, sin puntos ni explicaciones:
 
-reclamar  → si quiere hacer un reclamo formal
-pagar     → si quiere acordar una fecha de pago
-consultar → si solo quiere más información
-otro      → si es otra cosa
+reclamar  → si menciona reclamo, queja, cobro incorrecto, pago no registrado,
+            cargo que no reconoce, o cualquier disconformidad
+pagar     → si quiere acordar una fecha de pago o plan de cuotas
+consultar → si solo hace preguntas generales sin queja
+otro      → SOLO si no encaja en ninguna de las anteriores
+
+IMPORTANTE: si hay dudas entre reclamar y otro, elegí reclamar.
 
 Mensaje del cliente: {mensaje}"""
 

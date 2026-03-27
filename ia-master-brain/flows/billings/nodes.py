@@ -99,7 +99,7 @@ def nodo_explicar_factura(state:BillingEstate, model)->dict:
         "paso_actual": "esperando"
     }
 
-def nodo_detectar_intencion(state: BillingEstate, model)-> dict:
+def nodo_detectar_intencion(state: BillingEstate, model) -> dict:
     ultimo = state["messages"][-1].content
 
     respuesta = model.invoke([
@@ -109,19 +109,22 @@ def nodo_detectar_intencion(state: BillingEstate, model)-> dict:
     ])
 
     intencion = (respuesta.content or "").strip().lower()
-    logger.info("[NODO] intencion detectada: %s", intencion)
 
+    validas = {"reclamar", "pagar", "consultar", "otro"}
+    if intencion not in validas:
+        logger.warning("[NODO] intencion inválida '%s', fallback a reclamar", intencion)
+        intencion = "reclamar"
+
+    logger.info("[NODO] intencion detectada: %s", intencion)
     return {"paso_actual": intencion}
 
 
 def nodo_crear_ticket(state: BillingEstate, model) -> dict:
     customer_id = state["customer_id"]
     
-    # subject descriptivo generado por el LLM, no hardcodeado
     motivo = state.get("motivo_reclamo") or "Reclamo por factura"
     
-    # prioridad según el motivo
-    # si menciona dificultad económica o cargo no reconocido → HIGH
+    
     keywords_high = ["no reconoce", "no contrató", "no solicité", 
                      "no pedí", "dificultad", "no puedo pagar"]
     priority = "HIGH" if any(
@@ -130,8 +133,8 @@ def nodo_crear_ticket(state: BillingEstate, model) -> dict:
 
     resultado = create_ticket.invoke({
         "customer_id": customer_id,
-        "subject":     motivo,      # ← motivo real, no genérico
-        "priority":    priority     # ← prioridad según contexto
+        "subject":     motivo,
+        "priority":    priority    
     })
 
     ticket_id = "N/D"
@@ -169,10 +172,7 @@ def nodo_confirmar_ticket(state: BillingEstate, model)->dict:
     }
 
 def nodo_extraer_motivo(state: BillingEstate, model) -> dict:
-    """
-    Recolecta toda la información relevante de la conversación
-    y arma un subject completo para el ticket.
-    """
+
     conversacion = "\n".join([
         f"{'Cliente' if isinstance(m, HumanMessage) else 'Agente'}: {m.content}"
         for m in state["messages"]
@@ -198,7 +198,6 @@ Respondé SOLO en JSON exacto, sin texto adicional:
     import json as _json
     try:
         raw = respuesta.content.strip()
-        # limpiar si el LLM envuelve en ```json
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
@@ -208,7 +207,6 @@ Respondé SOLO en JSON exacto, sin texto adicional:
         logger.warning("[NODO] no se pudo parsear JSON, usando fallback")
         data = {"claro": True, "motivo": "Reclamo solicitado por cliente"}
 
-    # armar el subject completo para el ticket
     partes = []
     if data.get("motivo"):
         partes.append(data["motivo"])
@@ -225,7 +223,6 @@ Respondé SOLO en JSON exacto, sin texto adicional:
 
     subject = " | ".join(p for p in partes if p)
 
-    # si el cliente insiste aunque no haya todo, crear igual
     mensajes_cliente = [
         m.content.lower() for m in state["messages"]
         if isinstance(m, HumanMessage)
@@ -251,10 +248,6 @@ Respondé SOLO en JSON exacto, sin texto adicional:
 
 
 def nodo_pedir_detalle(state: BillingEstate, model) -> dict:
-    """
-    Nodo PURPLE — el cliente fue cortante, el LLM le pide más contexto
-    antes de crear el ticket.
-    """
     nombre = state["cliente"].get("name") or "cliente"
 
     system = SystemMessage(content=f"""Sos un agente de soporte de telecomunicaciones.

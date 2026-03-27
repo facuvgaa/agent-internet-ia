@@ -9,7 +9,7 @@ TOPIC_RESPUESTAS = "respuestas.agente"
 
 
 def main():
-    contenido = sys.argv[1] if len(sys.argv) > 1 else "pague el 28 de febero a las 6 de la tarde, por medio de mercado pago, el numero de comprobante es n°533558777"
+    contenido = sys.argv[1] if len(sys.argv) > 1 else "si, pague el 28 de febrero por mercado pago, el comprobante es n°553236877"
     customer_id = sys.argv[2] if len(sys.argv) > 2 else "1"
 
     payload = {
