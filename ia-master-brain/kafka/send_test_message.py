@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-"""
-Envía un mensaje al tópico consultas.usuario y espera la respuesta en respuestas.agente.
-Uso (desde la raíz del repo o desde ia-master-brain):
-  python -m kafka.send_test_message "¿Cuánto me cobran de internet?"
-  python -m kafka.send_test_message "Quiero ver mi factura" 2
-"""
 import json
 import sys
 import time
@@ -16,7 +9,7 @@ TOPIC_RESPUESTAS = "respuestas.agente"
 
 
 def main():
-    contenido = sys.argv[1] if len(sys.argv) > 1 else "si, pague un dia antes en un pago facil, de carrefour de mi ciudad"
+    contenido = sys.argv[1] if len(sys.argv) > 1 else "pague el 28 de febero a las 6 de la tarde, por medio de mercado pago, el numero de comprobante es n°533558777"
     customer_id = sys.argv[2] if len(sys.argv) > 2 else "1"
 
     payload = {
