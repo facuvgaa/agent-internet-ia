@@ -57,8 +57,8 @@ def get_customer_service(customer_id: int) -> dict:
 
 
 @tool
-def create_ticket(customer_id: int, subject: str, priority: str) -> str:
-    """Abre un ticket de reclamo técnico. Devuelve el id del ticket."""
+def create_ticket(customer_id: int, subject: str, priority: str) -> dict:
+    """Abre un ticket de reclamo técnico. Devuelve el id y estado del ticket."""
     url = f"{back_endpoint}/tickets"
     payload = {"id": None, "customerId": customer_id, "subject": subject, "priority": priority}
     logger.info("[TOOL] create_ticket(%s, %s, %s) -> POST %s", customer_id, subject, priority, url)
@@ -66,18 +66,24 @@ def create_ticket(customer_id: int, subject: str, priority: str) -> str:
         response = requests.post(url, json=payload, timeout=10)
         data = _safe_json(response)
         if response.status_code in (200, 201) and isinstance(data, dict) and data.get("id"):
-            ticket_id = data["id"]
-            msg = (
-                f"Listo, generé un reclamo. El número de ticket es: {ticket_id} "
-                "(guardalo para seguimiento o compensaciones)."
-            )
-            logger.info("[TOOL] create_ticket OK id=%s", ticket_id)
-            return msg
+            logger.info("[TOOL] create_ticket OK id=%s", data["id"])
+            return {
+                "success":   True,
+                "ticket_id": str(data["id"]),
+            }
         logger.error("[TOOL] create_ticket FAILED status=%s body=%s", response.status_code, data)
-        return f"Error al crear el ticket: la API respondió {response.status_code}."
+        return {
+            "success":   False,
+            "ticket_id": None,
+            "error":     f"API respondió {response.status_code}"
+        }
     except Exception as e:
         logger.error("[TOOL] create_ticket FAILED: %s", e)
-        return f"Error al crear el ticket: {e}."
+        return {
+            "success":   False,
+            "ticket_id": None,
+            "error":     str(e)
+        }
 
 
 @tool

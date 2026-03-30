@@ -9,6 +9,7 @@ from confluent_kafka import Consumer, Producer
 from langchain_core.messages import HumanMessage
 from connection_llm.llm_conecction import get_bedrock_model_master as llm_master
 from agents.llm_brain import LlmBrain
+from memory.memory_brain import close_checkpointer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -114,9 +115,9 @@ def triage(content: str) -> str:
     try:
         response = chat_haiku.invoke([HumanMessage(content=f"""
 Clasificá el mensaje como RECLAMO o CONSULTA.
-RECLAMO: quejas, facturas, servicios caídos, pedir descuentos.
+RECLAMO: quejas, facturas, servicios caídos, pedir descuentos o  si dice "tengo un problema", "quiero averiguar", se clasficia como reclamo.
 CONSULTA: preguntas generales sobre planes, cobertura, horarios.
-Respondé SOLO con una palabra.
+Respondé SOLO con una palabra, clasifica bien lee el mensaje.
 Mensaje: {content}""")])
         return response.content.strip().upper()
     except Exception as e:
@@ -159,6 +160,7 @@ try:
             logger.info("Mensaje: '%s' | ID: %s", content, customer_id)
 
             route = get_route(customer_id)
+            logger.info("[ROUTE] customer=%s route=%s", customer_id, route)
 
             # ── ya clasificado como RECLAMO ──
             if route == "BRAIN":
@@ -214,7 +216,7 @@ except KeyboardInterrupt:
     logger.info("Stopping...")
 finally:
     consumer.close()
-
+    close_checkpointer()
 
 
 
