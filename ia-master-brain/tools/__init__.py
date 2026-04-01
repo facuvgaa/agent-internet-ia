@@ -18,7 +18,6 @@ from .tools import (
     run_network_diagnostic,
 )
 
-# Compatibilidad con imports antiguos
 tools = ALL_BRAIN_TOOLS
 
 __all__ = [
