@@ -7,12 +7,11 @@ class BillingEstate(TypedDict):
     customer_id: int
 
     cliente: Optional[dict]
-    facturas: Optional[list]
+    facturas: list
     ticket_id: Optional[str]
-    motivo_reclamo: Optional[str]  
-    motivo_claro:   Optional[bool]  
+    servicios: Optional[list] 
 
-    paso_actual: Optional[str]
+    paso_actual: str
 
 
     messages: Annotated[list[BaseMessage], add_messages]

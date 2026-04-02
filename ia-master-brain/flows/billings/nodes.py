@@ -40,13 +40,14 @@ def nodo_conversar(state:BillingEstate, model)-> dict:
     return {"messages": [respuesta]}
 
 def nodo_info_servicios(state: BillingEstate, model):
-
-    resp = get_customer_service.invoke({"customer_id": state["customer_id"]})
-    data_pesada = resp.get("data", [])
-
-    servicios_ready = _limpiar_servicios(data_pesada)
-
     
+    if state.get("servicios") and len(state["servicios"]) > 0:
+        servicios_ready = state["servicios"]
+    else:
+        resp = get_customer_service.invoke({"customer_id": state["customer_id"]})
+        data_pesada = resp.get("data", [])
+        servicios_ready = _limpiar_servicios(data_pesada)
+
     prompt_ventas = EXPLICACION_SERVICIOS.format(
         cliente=state["cliente"],
         servicios_info=servicios_ready
@@ -55,7 +56,10 @@ def nodo_info_servicios(state: BillingEstate, model):
     mensajes = [SystemMessage(content=prompt_ventas)] + state["messages"]
     respuesta = model.invoke(mensajes)
 
-    return {"messages": [respuesta]}
+    return {
+        "messages": [respuesta],
+        "servicios": servicios_ready
+    }
 
 def nodo_gestionar_reclamo(state:BillingEstate, model_haiku)->dict:
     historial = state["messages"][-5:]
