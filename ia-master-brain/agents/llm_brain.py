@@ -35,7 +35,7 @@ class LlmBrain:
     def brain(self) -> None:
         
         self.subgrafos = {
-            "billing": build_factura_graph(self._llm_base, self.checkpointer),
+            "billing": build_factura_graph(self._llm_base, self.model_haiku, self.checkpointer),
            
         }
 
@@ -56,9 +56,7 @@ class LlmBrain:
         return "tools" if getattr(last, "tool_calls", None) else END
 
     def _get_intent(self, input_text: str) -> str:
-        prompt = route_prompt.formater(
-            input_text=input_text
-        )
+        prompt = route_prompt().format(input_text=input_text)
         
         response = self._llm_base.invoke([HumanMessage(content=prompt)])
         return response.content.strip().lower()

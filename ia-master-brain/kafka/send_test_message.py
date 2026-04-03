@@ -9,7 +9,7 @@ TOPIC_RESPUESTAS = "respuestas.agente"
 
 
 def main():
-    contenido   = sys.argv[1] if len(sys.argv) > 1 else "si quiero reclamar, tengo el numero de comprobante si queres, pasa que me aparece como impaga y me pueden cortar el servicio"
+    contenido   = sys.argv[1] if len(sys.argv) > 1 else "tenes info de mi servicios? quiero ver si tengo las promociones"
     customer_id = sys.argv[2] if len(sys.argv) > 2 else "1"
 
     payload = {"contenido": contenido, "customer_id": customer_id}
