@@ -13,9 +13,10 @@ def agent_facturacion():
 def route_prompt():
 
     prompt = """Analiza el mensaje del cliente y clasifícalo en una categoría:
-                - 'billing': Si pregunta por facturas, deudas, pagos, cargos o reclamos de cobro, Si pregunta por facturas, deudas, aumentos, servicios contratados, packs o promociones de su plan actual.
-                - 'general': Si es un saludo o una duda que no requiere ver la facturación.
-                
+
+                - 'billing': Si el mensaje trata sobre facturas, deudas, pagos, cargos, aumentos de precio, reclamos, o sobre los servicios/planes/promociones que el cliente tiene contratados (internet, TV, telefonía, pack, fibra, etc.).
+                - 'general': Si es un saludo genérico o una consulta que no tiene relación con la cuenta, servicios o facturación del cliente.
+
                 Mensaje: "{input_text}"
                 Responde SOLO con la palabra de la categoría (billing/general)."""
 

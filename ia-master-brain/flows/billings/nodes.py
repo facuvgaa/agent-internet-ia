@@ -1,3 +1,5 @@
+import json
+import re
 import logging
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from flows.billings.state import BillingEstate
@@ -6,7 +8,8 @@ from tools import get_customer_info, billing_info, create_ticket, payment_promis
 from .prompts import EXPLICACION_FACTURA, SYSTEM_RECLAMO, EXPLICACION_SERVICIOS
 
 
-
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def nodo_cargar_datos(state: BillingEstate)->dict:
 
@@ -47,33 +50,68 @@ def nodo_info_servicios(state: BillingEstate, model):
         servicios_ready = _limpiar_servicios(data_pesada)
 
     prompt_ventas = EXPLICACION_SERVICIOS.format(
-        cliente=state["cliente"],
+        cliente_id=state["cliente"],
         servicios_info=servicios_ready
     )
 
-    mensajes = [SystemMessage(content=prompt_ventas)] + state["messages"]
-    respuesta = model.invoke(mensajes)
+    msgs = list(state["messages"])
+    last_human = max((i for i, m in enumerate(msgs) if isinstance(m, HumanMessage)), default=None)
+    if last_human is not None:
+        msgs = msgs[:last_human + 1]
+    mensajes_finales = [SystemMessage(content=prompt_ventas)] + msgs
+    
+    respuesta = model.invoke(mensajes_finales)
 
     return {
-        "messages": [respuesta],
+        "messages": [respuesta], 
         "servicios": servicios_ready
     }
 
-def nodo_gestionar_reclamo(state:BillingEstate, model_haiku)->dict:
-    historial = state["messages"][-5:]
-    prompt_haiku = SYSTEM_RECLAMO.format(conversacion=historial)
+def nodo_gestionar_reclamo(state: BillingEstate, model_haiku) -> dict:
+    historial = state["messages"]
+    conversacion_limpia = "\n".join([f"{type(m).__name__}: {m.content}" for m in historial])
+    
+    prompt_haiku = SYSTEM_RECLAMO.format(conversacion=conversacion_limpia)
 
     datos_ticket = model_haiku.invoke([SystemMessage(content=prompt_haiku)])
 
+    contenido = datos_ticket.content.strip()
+
+    match = re.search(r'\{[^{}]*"factura_id"[^{}]*\}', contenido, re.DOTALL)
+    if match:
+        contenido = match.group(0)
+    elif "```json" in contenido:
+        contenido = contenido.split("```json")[1].split("```")[0].strip()
+    elif "```" in contenido:
+        contenido = contenido.split("```")[1].split("```")[0].strip()
+
+    try:
+        datos_json = json.loads(contenido)
+    except Exception:
+        logger.error(f"Haiku fallo en el JSON, usando defaults. Contenido: {contenido}")
+        datos_json = {
+            "factura_id": "N/A",
+            "motivo": "Reclamo general de facturación",
+            "prioridad": "media"
+        }
+
+    factura_id = datos_json.get("factura_id", "N/A")
+    motivo     = datos_json.get("motivo", "Reclamo de facturación")
+    prioridad  = datos_json.get("prioridad", "media")
+    subject    = f"[{factura_id}] {motivo}" if factura_id != "N/A" else motivo
+
     resultado_api = create_ticket.invoke({
-        "customer_id": state["customer_id"],
-        "factura_id": datos_ticket.get("factura_id"),
-        "motivo": datos_ticket.get("motivo"),
-        "prioridad": datos_ticket.get("prioridad")
+        "customer_id": int(state["customer_id"]),
+        "subject":     subject,
+        "priority":    prioridad,
     })
 
-    ticket_id = resultado_api.get("data", {}).get("id", "ERROR")
+    ticket_id = resultado_api.get("ticket_id", "ERROR") if isinstance(resultado_api, dict) else "ERROR"
 
-    msg_confirmacion = f"He registrado tu reclamo con el ID: {ticket_id}. ¿Deseas consultar algo más?"
-    return {"messages": [AIMessage(content=msg_confirmacion)], "ticket_id": ticket_id}
+    msg_confirmacion = f"He registrado tu reclamo con el ID: {ticket_id}. ¿Deseas consultar algo más sobre tus servicios?"
+    return {
+        "messages":    [AIMessage(content=msg_confirmacion)],
+        "ticket_id":   ticket_id,
+        "paso_actual": "reclamo_procesado",
+    }
 

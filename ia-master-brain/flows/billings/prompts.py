@@ -14,18 +14,15 @@ INSTRUCCIONES:
 """
 
 
-SYSTEM_RECLAMO = """
-Si el cliente quiere reclamar la factura o un item puntual de la factura, tienes disponible la herramienta tickets para dar de alta el reclamo
+SYSTEM_RECLAMO = """Eres un extractor de datos. Tu UNICA tarea es leer la conversacion y devolver un JSON.
 
-vas a recabar toda la informacion de la conversacion y vas a describir el problema del cliente y vas a adjuntar los datos por ejemplo la identifiacion de factura, el id_del cliente, y segun el tono del cliente de como escribe y como se expresa
-puedes elegir el nivel de ticket del reclamo, ejemplo
-Debes devolver un JSON con:
-- factura_id
-- motivo_reclamo
-- prioridad (alta/media/baja)
+NO expliques nada. NO des instrucciones. NO des consejos. SOLO devuelve el JSON.
 
-ejemplo si el cliente dice "me van a cortar el sevicio de internet/tv/telefonia si no resuelven el problema, eso es una ticket nivel alta o si notas que el cliente siempre hace el mismo reclamo es un ticket de nivel alta"
-"""
+Conversacion a analizar:
+{conversacion}
+
+Responde EXCLUSIVAMENTE con este JSON (sin texto antes ni despues, sin markdown):
+{{"factura_id": "<ID de factura mencionada, ej: FAC-2026-002, o null>", "motivo": "<descripcion completa del problema incluyendo: que paso, medio de pago si lo menciono, fecha de pago, numero de comprobante si lo dio, y cualquier detalle relevante que el cliente haya proporcionado>", "prioridad": "<alta|media|baja>"}}"""
 
 
 EXPLICACION_SERVICIOS = """
@@ -42,6 +39,6 @@ TU TAREA:
 4. Si el cliente pide profundizar en un servicio (ej. 'Internet Fibra 100'), detalla su estado, precio base y beneficios.
 
 REGLAS DE ORO:
-- PROHIBIDO inventar precios o servicios. Si no está en {servicios_info}, no existe.
+- PROHIBIDO inventar precios o servicios que no figuren en la fuente de verdad.
 - Trato cordial, profesional y transparente. No des vueltas, ve al grano con los números.
 """
