@@ -1,5 +1,40 @@
+# ── Variables de entorno ─────────────────────────────────────────────────────
 .env
-env
-venv
-.vscode
-vscode
+.env.*
+!.env.example
+
+# ── Python ────────────────────────────────────────────────────────────────────
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── Node / Front ──────────────────────────────────────────────────────────────
+moustro-front/node_modules/
+moustro-front/dist/
+moustro-front/dist-ssr/
+
+# ── Java / Spring Boot ────────────────────────────────────────────────────────
+cliente_back/target/
+
+# ── Editores ──────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.iml
+*.suo
+*.sw?
+.DS_Store
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
