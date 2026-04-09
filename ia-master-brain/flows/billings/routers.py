@@ -11,7 +11,6 @@ def router_principal(state: BillingEstate) -> Literal["info_servicios", "gestion
     if hasattr(ultimo_ai, "tool_calls") and len(ultimo_ai.tool_calls) > 0:
         return "gestionar_reclamo"
 
-    # buscar el último mensaje del usuario para decidir la ruta
     humanos = [m for m in mensajes if isinstance(m, HumanMessage)]
     if not humanos:
         return "end"
