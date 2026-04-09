@@ -32,7 +32,7 @@ def build_factura_graph(model_sonnet, model_haiku, checkpointer):
 
     workflow.add_conditional_edges(
         "info_servicios",
-        router_servicios,
+        lambda state: router_servicios(state, model_haiku),
         {
             "info_servicios": "info_servicios",  
             "gestionar_reclamo": "gestionar_reclamo",

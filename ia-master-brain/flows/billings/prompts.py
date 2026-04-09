@@ -25,6 +25,16 @@ Responde EXCLUSIVAMENTE con este JSON (sin texto antes ni despues, sin markdown)
 {{"factura_id": "<ID de factura mencionada, ej: FAC-2026-002, o null>", "motivo": "<descripcion completa del problema incluyendo: que paso, medio de pago si lo menciono, fecha de pago, numero de comprobante si lo dio, y cualquier detalle relevante que el cliente haya proporcionado>", "prioridad": "<alta|media|baja>"}}"""
 
 
+ROUTE_SERVICIOS_PROMPT = """Clasificá la intención del cliente en una de estas categorías:
+
+- 'reclamo': quiere reportar un error, quejarse, reclamar un cobro incorrecto o disputar una factura
+- 'cierre': quiere terminar la conversación (despedida, "gracias", "listo", "nada más")
+- 'continuar': quiere seguir consultando sobre sus servicios, planes, precios o promociones
+
+Mensaje: "{mensaje}"
+Respondé SOLO con una palabra: reclamo / cierre / continuar"""
+
+
 EXPLICACION_SERVICIOS = """
 Eres Emma, asistente experta en servicios. 
 Cliente: {cliente_id}

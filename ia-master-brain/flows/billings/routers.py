@@ -1,6 +1,7 @@
 from typing import Literal
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from .state import BillingEstate
+from .prompts import ROUTE_SERVICIOS_PROMPT
 
 def router_principal(state: BillingEstate) -> Literal["info_servicios", "gestionar_reclamo", "end"]:
     mensajes = state.get("messages", [])
@@ -30,29 +31,25 @@ def router_principal(state: BillingEstate) -> Literal["info_servicios", "gestion
 
     return "end"
 
-def router_servicios(state: BillingEstate) -> Literal["gestionar_reclamo", "info_servicios", "end"]:
+def router_servicios(state: BillingEstate, model_haiku) -> Literal["gestionar_reclamo", "info_servicios", "end"]:
     if state.get("paso_actual") == "reclamo_procesado":
         return "end"
 
     mensajes = state.get("messages", [])
-    if not mensajes: return "end"
-
-    ultimo_ai = mensajes[-1]
-    if hasattr(ultimo_ai, "tool_calls") and len(ultimo_ai.tool_calls) > 0:
-        return "gestionar_reclamo"
+    if not mensajes:
+        return "end"
 
     humanos = [m for m in mensajes if isinstance(m, HumanMessage)]
     if not humanos:
         return "end"
-    contenido = humanos[-1].content.lower()
 
-    palabras_cierre = ["listo", "gracias", "chau", "hasta luego", "no gracias", "eso es todo", "nada mas", "nada más"]
-    if any(p in contenido for p in palabras_cierre):
-        return "end"
+    contenido = humanos[-1].content
+    prompt = ROUTE_SERVICIOS_PROMPT.format(mensaje=contenido)
+    resultado = model_haiku.invoke([SystemMessage(content=prompt)])
+    decision = resultado.content.strip().lower()
 
-    palabras_reclamo = ["reclamo", "reclamar", "queja", "no corresponde", "cobro mal", "error en",
-                        "cortar", "corte", "impaga", "impago", "comprobante", "no impacto", "no se acredito"]
-    if any(p in contenido for p in palabras_reclamo):
+    if decision == "reclamo":
         return "gestionar_reclamo"
-
+    if decision == "cierre":
+        return "end"
     return "info_servicios"
