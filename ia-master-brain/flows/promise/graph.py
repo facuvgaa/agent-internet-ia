@@ -1,16 +1,15 @@
 from langgraph.graph import StateGraph, END
 
 from .nodes import (
-    nodo_cargar_datos, 
-    nodo_ejecutar_promesa, 
-    nodo_explicacion_promesa)
-
+    nodo_cargar_datos,
+    nodo_ejecutar_promesa,
+    nodo_explicacion_promesa,
+)
 from .routers import router_explicacion
 from .state import PromiseEstate
 
 
-
-def build_promice_graph(model_sonnet, model_haiku, checkpointer):
+def build_promice_graph(model_sonnet, model_haiku, checkpointer=None):
     workflow = StateGraph(PromiseEstate)
 
     workflow.add_node("cargar_datos", lambda state: nodo_cargar_datos(state))
@@ -26,7 +25,7 @@ def build_promice_graph(model_sonnet, model_haiku, checkpointer):
         {
             "explicacion_promesa": "explicacion_promesa",
             "ejecutar_promesa": "ejecutar_promesa",
-            "end": END
+            "end": END,
         }
     )
 

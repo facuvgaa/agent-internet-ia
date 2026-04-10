@@ -4,11 +4,10 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from flows.promise.state import PromiseEstate
 from flows.promise.utils import _defeat_factura_filter
 from tools.tools import get_customer_info, billing_info, payment_promises
-from promps import PROMPT_PROMISE_1, SYSTEM_PROMISE
+from .promps import PROMPT_PROMISE_1, SYSTEM_PROMISE
 logger = logging.getLogger(__name__)
 
 def nodo_cargar_datos(state: PromiseEstate) -> dict:
-
     customer_id = state["customer_id"]
 
     info_cliente = get_customer_info.invoke({"customer_id": customer_id})
@@ -33,11 +32,11 @@ def nodo_cargar_datos(state: PromiseEstate) -> dict:
         "paso_actual": "cargar_datos",
     }
 
-def nodo_explicacion_promesa(state: PromiseEstate, model) -> dict:
 
+def nodo_explicacion_promesa(state: PromiseEstate, model) -> dict:
     prompt = PROMPT_PROMISE_1.format(
         factura_defeate=state["factura_defeated"],
-        puede_prometer=state["puede_prometer"]
+        puede_prometer=state["puede_prometer"],
     )
 
     mensajes = [SystemMessage(content=prompt)] + state["messages"]
@@ -45,7 +44,7 @@ def nodo_explicacion_promesa(state: PromiseEstate, model) -> dict:
 
     return {
         "messages": [respuesta],
-        "paso_actual": "explicacion_promesa"
+        "paso_actual": "explicacion_promesa",
     }
 
 

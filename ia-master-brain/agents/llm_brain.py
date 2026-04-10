@@ -12,6 +12,7 @@ from connection_llm.llm_conecction import get_bedrock_model_master as llm_haiku
 from tools import ALL_BRAIN_TOOLS
 
 from flows.billings.graph import build_factura_graph
+from flows.promise.graph import build_promice_graph
 from context_llm.contexts import agent_facturacion, route_prompt
 
 load_dotenv()
@@ -36,7 +37,7 @@ class LlmBrain:
         
         self.subgrafos = {
             "billing": build_factura_graph(self._llm_base, self.model_haiku, self.checkpointer),
-           
+            "promise": build_promice_graph(self._llm_base, self.model_haiku, self.checkpointer),
         }
 
         tool_node = ToolNode(self.tools)
@@ -76,15 +77,28 @@ class LlmBrain:
 
         if intent == "billing" and "billing" in self.subgrafos:
             logger.info(f"[BRAIN] Derivando a subgrafo billing para cliente {customer_id}")
-            config = {"configurable": {"thread_id": f"factura-{customer_id}"}}
-            
-            return self.subgrafos["billing"].invoke(
+            config_billing = {"configurable": {"thread_id": f"factura-{customer_id}"}}
+
+            result = self.subgrafos["billing"].invoke(
                 {
                     "messages": [HumanMessage(content=input_text)],
                     "customer_id": str(customer_id),
                 },
-                config=config
+                config=config_billing,
             )
+
+            if result.get("paso_actual") == "ir_a_promise":
+                logger.info(f"[BRAIN] Saltando a promise flow para cliente {customer_id}")
+                config_promise = {"configurable": {"thread_id": f"promise-{customer_id}"}}
+                return self.subgrafos["promise"].invoke(
+                    {
+                        "messages": result["messages"],
+                        "customer_id": str(customer_id),
+                    },
+                    config=config_promise,
+                )
+
+            return result
 
         logger.info(f"[BRAIN] Derivando a flujo general para cliente {customer_id}")
         config_general = {"configurable": {"thread_id": str(customer_id)}}

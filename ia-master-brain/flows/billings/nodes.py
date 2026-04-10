@@ -11,6 +11,10 @@ from .prompts import EXPLICACION_FACTURA, SYSTEM_RECLAMO, EXPLICACION_SERVICIOS
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+def nodo_marcar_promise(state: BillingEstate) -> dict:
+    return {"paso_actual": "ir_a_promise"}
+
 def nodo_cargar_datos(state: BillingEstate)->dict:
 
     customer_id = state["customer_id"]
@@ -21,16 +25,13 @@ def nodo_cargar_datos(state: BillingEstate)->dict:
 
 
     return {
-        "cliente":cliente,
-        "facturas":facturas,
-        "pasa_Actual": "explicar factura"
+        "cliente": cliente,
+        "facturas": facturas,
     }
 
 
-def nodo_conversar(state:BillingEstate, model)-> dict:
-   
+def nodo_conversar(state: BillingEstate, model) -> dict:
     prompt_formateado = EXPLICACION_FACTURA.format(
-
         cliente_nombre=state["cliente"],
         customer_id=state["customer_id"],
         contexto_facturas=state["facturas"]
@@ -38,7 +39,10 @@ def nodo_conversar(state:BillingEstate, model)-> dict:
     mensajes = [SystemMessage(content=prompt_formateado)] + state["messages"]
     respuesta = model.invoke(mensajes)
 
-    return {"messages": [respuesta]}
+    ofrecio_promesa = "promesa de pago" in respuesta.content.lower()
+    paso = "oferta_promesa_enviada" if ofrecio_promesa else state.get("paso_actual", "conversando")
+
+    return {"messages": [respuesta], "paso_actual": paso}
 
 def nodo_info_servicios(state: BillingEstate, model):
     
@@ -114,4 +118,6 @@ def nodo_gestionar_reclamo(state: BillingEstate, model_haiku) -> dict:
         "ticket_id":   ticket_id,
         "paso_actual": "reclamo_procesado",
     }
+
+
 
