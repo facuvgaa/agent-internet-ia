@@ -39,10 +39,7 @@ def nodo_conversar(state: BillingEstate, model) -> dict:
     mensajes = [SystemMessage(content=prompt_formateado)] + state["messages"]
     respuesta = model.invoke(mensajes)
 
-    ofrecio_promesa = "promesa de pago" in respuesta.content.lower()
-    paso = "oferta_promesa_enviada" if ofrecio_promesa else state.get("paso_actual", "conversando")
-
-    return {"messages": [respuesta], "paso_actual": paso}
+    return {"messages": [respuesta]}
 
 def nodo_info_servicios(state: BillingEstate, model):
     

@@ -72,8 +72,16 @@ class LlmBrain:
         if not self.workflow:
             raise RuntimeError("Brain no inicializado; llamá a brain() primero.")
 
-        intent = self._get_intent(input_text)
-        logger.info(f"[BRAIN] Intención detectada: {intent}")
+        config_billing = {"configurable": {"thread_id": f"factura-{customer_id}"}}
+        billing_state  = self.subgrafos["billing"].get_state(config_billing)
+        tiene_billing_activo = bool(billing_state and billing_state.values.get("messages"))
+
+        if tiene_billing_activo:
+            intent = "billing"
+            logger.info(f"[BRAIN] Conversación de billing activa para cliente {customer_id}, ruteando directo")
+        else:
+            intent = self._get_intent(input_text)
+            logger.info(f"[BRAIN] Intención detectada: {intent}")
 
         if intent == "billing" and "billing" in self.subgrafos:
             logger.info(f"[BRAIN] Derivando a subgrafo billing para cliente {customer_id}")
@@ -92,7 +100,7 @@ class LlmBrain:
                 config_promise = {"configurable": {"thread_id": f"promise-{customer_id}"}}
                 return self.subgrafos["promise"].invoke(
                     {
-                        "messages": result["messages"],
+                        "messages": [HumanMessage(content=input_text)],
                         "customer_id": str(customer_id),
                     },
                     config=config_promise,

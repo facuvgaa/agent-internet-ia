@@ -6,7 +6,7 @@ from .nodes import (
     nodo_info_servicios,
     nodo_marcar_promise,
 )
-from .routers import router_principal, router_servicios, router_post_carga
+from .routers import router_principal, router_servicios
 from .state import BillingEstate
 
 
@@ -20,24 +20,16 @@ def build_factura_graph(model_sonnet, model_haiku, checkpointer):
     workflow.add_node("marcar_promise", lambda state: nodo_marcar_promise(state))
 
     workflow.set_entry_point("cargar_datos")
-    workflow.add_conditional_edges(
-        "cargar_datos",
-        lambda state: router_post_carga(state, model_haiku),
-        {
-            "conversar": "conversar",
-            "ir_a_promise": "marcar_promise",
-            "end": END,
-        }
-    )
+    workflow.add_edge("cargar_datos", "conversar")
 
     workflow.add_conditional_edges(
         "conversar",
         lambda state: router_principal(state, model_haiku),
         {
-            "info_servicios": "info_servicios",
+            "info_servicios":   "info_servicios",
             "gestionar_reclamo": "gestionar_reclamo",
-            "conversar": "conversar",
-            "end": END,
+            "ir_a_promise":     "marcar_promise",
+            "end":              END,
         }
     )
 

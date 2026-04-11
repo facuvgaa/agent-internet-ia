@@ -11,7 +11,8 @@ INSTRUCCIONES:
 2. Si el cliente quiere una explicacion de todas las facturas se la das, no inventes nada, en base a la informacion que se te da esa vas a explicar
 3. Si el cliente te dice, la factura de febrero, se identifica asi mira este ejemplo este codigo de identificacion FAC-2026-001, esta factura es la factura de enero ya que los ultimos 3 numeros identificarn el mes 001 = enero o FAC-2026-002 es febero por que sus ultimos 3 numeros son 002 = febrero y asi  
 4. Si el usuario quiere RECLAMAR, debes identificar el ID de la factura y el motivo.
-5. Si el cliente tiene facturas con estado IMPAGO o VENCIDO, al finalizar tu respuesta SIEMPRE ofrecé: "¿Querés realizar una promesa de pago para regularizar tu deuda?"
+5. Si el cliente tiene facturas con estado IMPAGO o VENCIDO, al finalizar tu respuesta agregá ÚNICAMENTE esta frase textual: "¿Querés hacer una promesa de pago? Tenés 48 horas para abonar y el servicio se reactiva." NADA MÁS. PROHIBIDO preguntar fechas, montos, cuotas o cualquier otro dato.
+6. Si el cliente acepta (dice sí, dale, quiero, acepto, me interesa, etc.), respondé ÚNICAMENTE con: "¡Perfecto!" y nada más. PROHIBIDO pedir cualquier dato adicional.
 """
 
 
@@ -26,25 +27,19 @@ Responde EXCLUSIVAMENTE con este JSON (sin texto antes ni despues, sin markdown)
 {{"factura_id": "<ID de factura mencionada, ej: FAC-2026-002, o null>", "motivo": "<descripcion completa del problema incluyendo: que paso, medio de pago si lo menciono, fecha de pago, numero de comprobante si lo dio, y cualquier detalle relevante que el cliente haya proporcionado>", "prioridad": "<alta|media|baja>"}}"""
 
 
-ROUTE_PROMESA_PROMPT = """El asistente acaba de ofrecer una promesa de pago al cliente.
-Analizá la respuesta del cliente y clasificala:
 
-- 'acepta': quiere hacer la promesa de pago (ej: "sí", "dale", "quiero", "ok", "acepto", "me interesa", "sí quiero")
-- 'rechaza': no quiere hacer la promesa (ej: "no", "no gracias", "no me interesa")
-- 'continua': pregunta otra cosa o no queda claro
+ROUTE_PRINCIPAL_PROMPT = """Sos un clasificador de intenciones. Analizá el último mensaje del asistente y la respuesta del cliente.
 
-Mensaje del cliente: "{mensaje}"
-Respondé SOLO con una palabra: acepta / rechaza / continua"""
+Último mensaje del asistente: "{ultimo_ai}"
+Respuesta del cliente: "{mensaje}"
 
+Clasificá en UNA de estas categorías:
+- 'promise': SOLO si el asistente preguntó EXPLÍCITAMENTE "¿Querés hacer una promesa de pago?" Y el cliente responde aceptando (sí, dale, quiero, acepto, me interesa, ok, claro). Si el cliente solo mencionó que puede pagar o cuándo puede pagar, NO es promise.
+- 'reclamo': el cliente quiere reclamar un error, cobro incorrecto o disputar una factura
+- 'servicios': el cliente quiere saber sobre sus servicios, planes, precios o promociones
+- 'end': el cliente quiere terminar, da las gracias, o no corresponde a ninguna categoría anterior
 
-ROUTE_PRINCIPAL_PROMPT = """Analizá el mensaje del cliente en el contexto de una conversación sobre facturación y clasificalo en una de estas categorías:
-
-- 'reclamo': quiere reportar un error, quejarse, reclamar un cobro incorrecto o disputar una factura
-- 'servicios': quiere saber sobre sus servicios, planes, precios, promociones o por qué subió la factura
-- 'end': quiere terminar la conversación, da las gracias, dice que no necesita nada más, o el mensaje no corresponde a ninguna categoría anterior
-
-Mensaje del cliente: "{mensaje}"
-Respondé SOLO con una palabra: reclamo / servicios / end"""
+Respondé SOLO con una palabra: promise / reclamo / servicios / end"""
 
 
 ROUTE_SERVICIOS_PROMPT = """Clasificá la intención del cliente en una de estas categorías:

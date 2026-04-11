@@ -17,9 +17,14 @@ def router_explicacion(state: PromiseEstate, model_haiku) -> Literal["ejecutar_p
         return "end"
 
     mensajes = state.get("messages", [])
+
+    # Si el último mensaje es del AI, terminar el turno y esperar respuesta del usuario
+    if not mensajes or not isinstance(mensajes[-1], HumanMessage):
+        return "end"
+
     humanos = [m for m in mensajes if isinstance(m, HumanMessage)]
     if not humanos:
-        return "explicacion_promesa"
+        return "end"
 
     ultimo_humano = humanos[-1].content
     prompt = ROUTE_SYSTEM_PROMICE.format(mensaje=ultimo_humano)

@@ -39,7 +39,12 @@ def nodo_explicacion_promesa(state: PromiseEstate, model) -> dict:
         puede_prometer=state["puede_prometer"],
     )
 
-    mensajes = [SystemMessage(content=prompt)] + state["messages"]
+    msgs = state["messages"]
+    ultimo_humano = next((i for i in range(len(msgs) - 1, -1, -1) if isinstance(msgs[i], HumanMessage)), None)
+    if ultimo_humano is not None:
+        msgs = msgs[:ultimo_humano + 1]
+
+    mensajes = [SystemMessage(content=prompt)] + msgs
     respuesta = model.invoke(mensajes)
 
     return {

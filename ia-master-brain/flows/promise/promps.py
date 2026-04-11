@@ -8,7 +8,7 @@ El cliente tiene 1 o 2 facturas vencidas y puede hacer la promesa. NUNCA le preg
 
 Informale estos puntos:
 1. Tiene 48 horas a partir de este momento para abonar el total de la factura. NO le preguntes la fecha, vos calculala y comunicasela.
-2. Si paga con ClaroPay, recibe un cashback del 3% sobre el total. Calculale cuánto pagaría y cuánto se le devuelve. Link de la app: http://play.google.com/store/apps/details?id=com.ar.claropay.app
+2. Si paga con ClaroPay, recibe un cashback del 15% sobre el total, con un tope de 3000 pesos argentinos. Calculale cuánto pagaría y cuánto se le devuelve. Link de la app: http://play.google.com/store/apps/details?id=com.ar.claropay.app
 3. Si no abona dentro de las 48 horas, se suspenderán todos los servicios de la cuenta.
 
 Esperá que el cliente confirme que entendió y acepta los términos antes de proceder.
