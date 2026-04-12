@@ -20,4 +20,8 @@ class RetentionState(TypedDict):
 
     paso_actual: str
 
+    servicios: Optional[list]        # resultado de get_customer_service
+    
+    ofertas_preview: Optional[list] 
+
     messages: Annotated[list[BaseMessage], add_messages]
