@@ -12,18 +12,27 @@ def nodo_cargar_datos(state: RetentionState) -> dict:
     cliente = customer_info.get("data", {})
     servicios_raw = get_customer_service.invoke({"customer_id": customer_id})
     servicios = servicios_raw.get("data", [])
-    eligibility = get_retention_eligibility.invoke({"customer_id": customer_id})
-    retention_nivel = eligibility.get("data", {})
+    eligibility_raw = get_retention_eligibility.invoke({"customer_id": customer_id})
+    eligibility = eligibility_raw.get("data", {})
+
     logger.info(
         "[retention] customer_id=%s eligible=%s servicios=%s",
         customer_id,
-        retention_nivel.get("eligible"),
+        eligibility.get("eligible"),
         len(servicios),
     )
+    if not eligibility.get("eligible", False):
+        return {
+            "cliente": cliente,
+            "eligibility": eligibility,
+            "paso_actual": "no_elegible",
+            "messages": [AIMessage(content=eligibility.get("message", "No tenés promociones disponibles en este momento."))]
+        }
+        
     return {
         "cliente": cliente,
         "servicios": servicios,
-        "eligibility": retention_nivel,
+        "eligibility": eligibility,
         "paso_actual": "cargar_datos",
     }
 
