@@ -18,11 +18,11 @@ def router_explicacion(state: PromiseEstate, model_haiku) -> Literal["ejecutar_p
 
     mensajes = state.get("messages", [])
 
-    if not mensajes or not isinstance(mensajes[-1], HumanMessage):
-        return "end"
-
     humanos = [m for m in mensajes if isinstance(m, HumanMessage)]
     if not humanos:
+        return "end"
+
+    if mensajes and not isinstance(mensajes[-1], HumanMessage):
         return "end"
 
     ultimo_humano = humanos[-1].content

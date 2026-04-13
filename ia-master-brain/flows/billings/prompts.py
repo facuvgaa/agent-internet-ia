@@ -34,7 +34,7 @@ ROUTE_PRINCIPAL_PROMPT = """Sos un clasificador de intenciones. Analizá el últ
 Respuesta del cliente: "{mensaje}"
 
 Clasificá en UNA de estas categorías:
-- 'promise': SOLO si el asistente preguntó EXPLÍCITAMENTE "¿Querés hacer una promesa de pago?" Y el cliente responde aceptando (sí, dale, quiero, acepto, me interesa, ok, claro). Si el cliente solo mencionó que puede pagar o cuándo puede pagar, NO es promise.
+- 'promise': si el cliente quiere hacer una promesa de pago. Esto incluye: el cliente responde aceptando después de que el asistente ofreció la promesa, O el cliente menciona explícitamente que quiere hacer/gestionar/confirmar una promesa de pago.
 - 'reclamo': el cliente quiere reclamar un error, cobro incorrecto o disputar una factura
 - 'servicios': el cliente quiere saber sobre sus servicios, planes, precios o promociones
 - 'end': el cliente quiere terminar, da las gracias, o no corresponde a ninguna categoría anterior

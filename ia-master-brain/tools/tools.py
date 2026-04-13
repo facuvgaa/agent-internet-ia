@@ -153,8 +153,9 @@ def payment_promises(customer_id: int, billing_id: int, promise_until: str) -> s
         if response.status_code in (200, 201) and isinstance(data, dict) and data.get("id"):
             hasta = data.get("promiseUntil") or promise_until
             msg = (
-                "Listo, generé el compromiso de pago. Si querés puedo reiniciar tu módem desde acá "
-                f"y nos aseguramos de que ande; recordá pagar antes del {hasta}."
+                f"¡Listo! La promesa de pago quedó registrada. Tenés hasta el {hasta} para abonar. "
+                "Ahora reiniciá tu módem o tu señal 4G y ya podés seguir usándolo con normalidad. "
+                "Recordá que si pagás con la app tenés un 15% de cashback. ¿Puedo ayudarte con algo más?"
             )
             logger.info("[TOOL] payment_promises OK id=%s promiseUntil=%s", data.get("id"), hasta)
             return msg

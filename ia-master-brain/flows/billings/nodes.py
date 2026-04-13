@@ -96,9 +96,9 @@ def nodo_gestionar_reclamo(state: BillingEstate, model_haiku) -> dict:
             "prioridad": "media"
         }
 
-    factura_id = datos_json.get("factura_id", "N/A")
-    motivo     = datos_json.get("motivo", "Reclamo de facturación")
-    prioridad  = datos_json.get("prioridad", "media")
+    factura_id = datos_json.get("factura_id") or "N/A"
+    motivo     = datos_json.get("motivo") or "Reclamo general de facturación"
+    prioridad  = datos_json.get("prioridad") or "media"
     subject    = f"[{factura_id}] {motivo}" if factura_id != "N/A" else motivo
 
     resultado_api = create_ticket.invoke({

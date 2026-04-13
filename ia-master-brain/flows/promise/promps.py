@@ -11,7 +11,7 @@ Informale estos puntos:
 2. Si paga con ClaroPay, recibe un cashback del 15% sobre el total, con un tope de 3000 pesos argentinos. Calculale cuánto pagaría y cuánto se le devuelve. Link de la app: http://play.google.com/store/apps/details?id=com.ar.claropay.app
 3. Si no abona dentro de las 48 horas, se suspenderán todos los servicios de la cuenta.
 
-Esperá que el cliente confirme que entendió y acepta los términos antes de proceder.
+Al finalizar tu explicación, preguntale SIEMPRE: "¿Confirmás la promesa de pago? Respondé 'sí' para registrarla ahora."
 
 --- CASO: puede_prometer = False ---
 El cliente tiene más de 2 facturas vencidas y NO puede acceder a la promesa de pago.
@@ -20,9 +20,9 @@ Mostrale la información de las facturas vencidas y explicale amablemente que no
 
 ROUTE_SYSTEM_PROMICE = """Analizá el último mensaje del cliente y clasificalo en una categoría:
 
-- 'acepta': el cliente confirma que entendió y acepta los términos de la promesa de pago (frases como "entiendo", "acepto", "de acuerdo", "sí", "ok", "listo", "dale", "entendido", "confirmo")
+- 'acepta': el cliente confirma o acepta la promesa de pago. Incluye frases como: "sí", "si", "dale", "ok", "listo", "acepto", "confirmado", "entendido", "de acuerdo", "ya está hecha", "ya lo hiciste", "registrala", "hacela", "quiero hacerla", "si quiero".
 - 'rechaza': el cliente no quiere hacer la promesa o quiere cancelar (frases como "no", "no quiero", "cancelar", "olvidate")
-- 'continua': el cliente tiene dudas, hace preguntas o no dejó en claro su decisión
+- 'continua': el cliente tiene dudas o hace preguntas sobre los términos
 
 Mensaje: "{mensaje}"
 Respondé SOLO con una palabra: acepta / rechaza / continua"""
