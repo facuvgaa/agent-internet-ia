@@ -39,7 +39,7 @@ def router_principal(state: BillingEstate, model_haiku) -> Literal["info_servici
         return "info_servicios"
     return "end"
 
-def router_servicios(state: BillingEstate, model_haiku) -> Literal["gestionar_reclamo", "info_servicios", "end"]:
+def router_servicios(state: BillingEstate, model_haiku) -> Literal["gestionar_reclamo", "info_servicios", "ir_a_retention", "end"]:
     if state.get("paso_actual") == "reclamo_procesado":
         return "end"
 
@@ -56,8 +56,12 @@ def router_servicios(state: BillingEstate, model_haiku) -> Literal["gestionar_re
     resultado = model_haiku.invoke([SystemMessage(content=prompt)])
     decision = resultado.content.strip().lower()
 
+    logger.info("[router_servicios] decision='%s' cliente='%s'", decision, contenido)
+
     if decision == "reclamo":
         return "gestionar_reclamo"
+    if decision == "retention":
+        return "ir_a_retention"
     if decision == "cierre":
         return "end"
     return "info_servicios"

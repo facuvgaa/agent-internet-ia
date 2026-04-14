@@ -45,11 +45,12 @@ Respondé SOLO con una palabra: promise / reclamo / servicios / end"""
 ROUTE_SERVICIOS_PROMPT = """Clasificá la intención del cliente en una de estas categorías:
 
 - 'reclamo': quiere reportar un error, quejarse, reclamar un cobro incorrecto o disputar una factura
+- 'retention': quiere un descuento, una promoción, bajar el precio de su factura, o amenaza con darse de baja
 - 'cierre': quiere terminar la conversación (despedida, "gracias", "listo", "nada más")
 - 'continuar': quiere seguir consultando sobre sus servicios, planes, precios o promociones
 
 Mensaje: "{mensaje}"
-Respondé SOLO con una palabra: reclamo / cierre / continuar"""
+Respondé SOLO con una palabra: reclamo / retention / cierre / continuar"""
 
 
 EXPLICACION_SERVICIOS = """

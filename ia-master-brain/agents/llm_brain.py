@@ -13,6 +13,7 @@ from tools import ALL_BRAIN_TOOLS
 
 from flows.billings.graph import build_factura_graph
 from flows.promise.graph import build_promice_graph
+from flows.retention.graph import build_retention_graph
 from context_llm.contexts import agent_facturacion, route_prompt
 
 load_dotenv()
@@ -36,8 +37,9 @@ class LlmBrain:
     def brain(self) -> None:
         
         self.subgrafos = {
-            "billing": build_factura_graph(self._llm_base, self.model_haiku, self.checkpointer),
-            "promise": build_promice_graph(self._llm_base, self.model_haiku, self.checkpointer),
+            "billing":   build_factura_graph(self._llm_base, self.model_haiku, self.checkpointer),
+            "promise":   build_promice_graph(self._llm_base, self.model_haiku, self.checkpointer),
+            "retention": build_retention_graph(self._llm_base, self.model_haiku, self.checkpointer),
         }
 
         tool_node = ToolNode(self.tools)
@@ -72,24 +74,41 @@ class LlmBrain:
         if not self.workflow:
             raise RuntimeError("Brain no inicializado; llamá a brain() primero.")
 
-        config_billing = {"configurable": {"thread_id": f"factura-{customer_id}"}}
-        billing_state  = self.subgrafos["billing"].get_state(config_billing)
-        tiene_billing_activo = bool(billing_state and billing_state.values.get("messages"))
+        config_billing   = {"configurable": {"thread_id": f"factura-{customer_id}"}}
+        config_retention = {"configurable": {"thread_id": f"retention-{customer_id}"}}
 
-        if tiene_billing_activo:
+        billing_state   = self.subgrafos["billing"].get_state(config_billing)
+        retention_state = self.subgrafos["retention"].get_state(config_retention)
+
+        tiene_billing_activo   = bool(billing_state and billing_state.values.get("messages"))
+        tiene_retention_activo = bool(retention_state and retention_state.values.get("messages"))
+
+        if tiene_retention_activo:
+            intent = "retention"
+            logger.info(f"[BRAIN] Conversación de retention activa para cliente {customer_id}, ruteando directo")
+        elif tiene_billing_activo:
             intent = "billing"
             logger.info(f"[BRAIN] Conversación de billing activa para cliente {customer_id}, ruteando directo")
         else:
             intent = self._get_intent(input_text)
             logger.info(f"[BRAIN] Intención detectada: {intent}")
 
+        if intent == "retention":
+            logger.info(f"[BRAIN] Derivando a subgrafo retention para cliente {customer_id}")
+            return self.subgrafos["retention"].invoke(
+                {
+                    "messages":    [HumanMessage(content=input_text)],
+                    "customer_id": int(customer_id),
+                },
+                config=config_retention,
+            )
+
         if intent == "billing" and "billing" in self.subgrafos:
             logger.info(f"[BRAIN] Derivando a subgrafo billing para cliente {customer_id}")
-            config_billing = {"configurable": {"thread_id": f"factura-{customer_id}"}}
 
             result = self.subgrafos["billing"].invoke(
                 {
-                    "messages": [HumanMessage(content=input_text)],
+                    "messages":    [HumanMessage(content=input_text)],
                     "customer_id": str(customer_id),
                 },
                 config=config_billing,
@@ -100,10 +119,20 @@ class LlmBrain:
                 config_promise = {"configurable": {"thread_id": f"promise-{customer_id}"}}
                 return self.subgrafos["promise"].invoke(
                     {
-                        "messages": [HumanMessage(content=input_text)],
+                        "messages":    [HumanMessage(content=input_text)],
                         "customer_id": str(customer_id),
                     },
                     config=config_promise,
+                )
+
+            if result.get("paso_actual") == "ir_a_retention":
+                logger.info(f"[BRAIN] Saltando a retention flow desde billing para cliente {customer_id}")
+                return self.subgrafos["retention"].invoke(
+                    {
+                        "messages":    [HumanMessage(content=input_text)],
+                        "customer_id": int(customer_id),
+                    },
+                    config=config_retention,
                 )
 
             return result

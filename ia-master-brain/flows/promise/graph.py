@@ -3,7 +3,7 @@ from langgraph.graph import StateGraph, END
 from .nodes import (
     nodo_cargar_datos,
     nodo_ejecutar_promesa,
-    nodo_explicacion_promesa,
+    nodo_explicacion_promesa
 )
 from .routers import router_explicacion
 from .state import PromiseEstate

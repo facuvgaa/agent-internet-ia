@@ -15,6 +15,9 @@ logger = logging.getLogger(__name__)
 def nodo_marcar_promise(state: BillingEstate) -> dict:
     return {"paso_actual": "ir_a_promise"}
 
+def nodo_marcar_retention(state: BillingEstate) -> dict:
+    return {"paso_actual": "ir_a_retention"}
+
 def nodo_cargar_datos(state: BillingEstate)->dict:
 
     customer_id = state["customer_id"]
