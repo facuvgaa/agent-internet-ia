@@ -8,20 +8,13 @@ class RetentionState(TypedDict):
     customer_id: int
 
     cliente: Optional[dict]
-    service_id: Optional[int]
-
-    eligibility: Optional[dict]
-    retention_tiers: list
-
-    selected_level: Optional[int]
-    preview: Optional[dict]
-
-    application_result: Optional[str]
-
-    paso_actual: str
-
-    servicios: Optional[list]        # resultado de get_customer_service
     
-    ofertas_preview: Optional[list] 
-
+    servicios: Optional[list]
+    
+    eligibility: Optional[dict]
+    
+    ofertas_preview: Optional[list]
+    
+    paso_actual: str
+    
     messages: Annotated[list[BaseMessage], add_messages]
