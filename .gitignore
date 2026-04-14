@@ -29,6 +29,7 @@ cliente_back/target/
 
 # ── Editores ──────────────────────────────────────────────────────────────────
 .vscode/
+.cursor/
 .idea/
 *.iml
 *.suo

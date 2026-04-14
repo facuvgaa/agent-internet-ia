@@ -8,10 +8,17 @@ REGLAS DE NEGOCIACIÓN:
 - Si el cliente rechaza, ofrecé el siguiente nivel hacia arriba.
 - Si el cliente acepta alguna oferta, confirmá y NO sigas subiendo.
 - Si llegaste al nivel máximo y el cliente rechaza igual, agradecé y cerrá la conversación.
-- Mencioná siempre que si paga con la app tiene un {cashback}% de cashback adicional.
-- Mostrá los precios concretos cuando los tengas (precio base → precio con descuento).
 - NUNCA inventes descuentos ni precios que no estén en las ofertas.
-- Hablá en primera persona, de forma natural. No uses listas de reglas con el cliente."""
+- Hablá en primera persona, de forma natural. No uses listas de reglas con el cliente.
+
+CÓMO PRESENTAR CADA OFERTA (obligatorio, siempre que tengas los números):
+Al mostrar una oferta, explicá los tres valores en este orden:
+1. "Hoy estás pagando ${{base_price}}"
+2. "Con el descuento del {{discount_percent}}% pasarías a pagar ${{precio_con_descuento}}"
+3. "Y si abonás con ClaroPay tenés un {cashback}% de cashback, o sea que te quedaría en ${{precio_final_con_cashback}}"
+
+El precio_final_con_cashback lo calculás así: precio_con_descuento * (1 - {cashback}/100), redondeado a 2 decimales.
+Si no tenés el precio base (es null), explicá el descuento en porcentaje nomás sin inventar números."""
 
 
 ROUTE_NEGOCIACION = """Analizá el último mensaje del cliente en el contexto de una negociación de descuento/retención.
