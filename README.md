@@ -216,7 +216,7 @@ docker compose up --build
 
 El primer build tarda varios minutos (Maven descarga dependencias, npm compila). Los siguientes son más rápidos gracias al cache de capas Docker.
 
-Accedé al chat en: **http://localhost**
+Accedé al chat en: **http://localhost:5173/**
 
 ### Desarrollo local (sin Docker para el brain)
 
