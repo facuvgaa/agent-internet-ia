@@ -1,36 +1,166 @@
 # Mounstro v3 — Agente de Atención al Cliente con IA
 
-Sistema de atención al cliente conversacional basado en IA para una empresa de telecomunicaciones. Integra un chat en tiempo real (WebSocket), un agente LLM orquestado con LangGraph, y un backend Spring Boot con APIs REST.
+Sistema de atención al cliente conversacional para una empresa de telecomunicaciones. Integra un chat en tiempo real (WebSocket/STOMP), un agente LLM orquestado con LangGraph y tres flujos de trabajo especializados e independientes, con memoria de corto y largo plazo.
+
+**Repositorio:** https://github.com/facuvgaa/agent-internet-ia
+
+---
+
+## Diagrama de arquitectura
+
+![Diagrama de arquitectura](imagen/diagrama.png)
 
 ---
 
 ## Arquitectura general
 
 ```
-┌─────────────────┐     WebSocket/STOMP     ┌──────────────────────┐
-│  moustro-front  │ ◄──────────────────────► │   cliente_back       │
-│  (React + Vite) │                          │  (Spring Boot :8080) │
-└─────────────────┘                          └──────────┬───────────┘
-                                                        │ Kafka
-                                             ┌──────────▼───────────┐
-                                             │    ia-master-brain   │
-                                             │  (Python + LangGraph)│
-                                             └──────────────────────┘
-                                                        │
-                                       ┌────────────────┼────────────────┐
-                                  Redis (estado)   Postgres ×2      AWS Bedrock
-                                  (checkpointer    (internet-db +    (Claude)
-                                   + ruteo)         conversation-db)
+┌─────────────────┐   WebSocket/STOMP   ┌────────────────────────┐
+│  moustro-front  │ ◄──────────────────► │    cliente_back        │
+│  (React + Vite) │                      │  (Spring Boot :8080)   │
+└─────────────────┘                      └───────────┬────────────┘
+                                                     │  Kafka
+                                          ┌──────────▼────────────┐
+                                          │    ia-master-brain    │
+                                          │                       │
+                                          │  ┌─── Triage (Haiku)  │
+                                          │  │   CONSULTA │ RECLAMO│
+                                          │  │            ▼       │
+                                          │  │       LlmBrain     │
+                                          │  │    ┌──────────────┐ │
+                                          │  │    │   billing    │ │
+                                          │  │    │   promise    │ │
+                                          │  │    │   retention  │ │
+                                          │  │    └──────────────┘ │
+                                          └──────────┬────────────┘
+                                                     │
+                              ┌──────────────────────┼──────────────────────┐
+                         Redis (corto plazo)    Postgres ×2           AWS Bedrock
+                         checkpointer +         internet-db +          (Claude)
+                         ruteo activo           conversation-db
+                                                (largo plazo)
 ```
 
 ### Flujo de un mensaje
 
-1. El usuario escribe en el **chat (React)** → se publica en `/app/chat` por STOMP.
-2. **Spring Boot** publica el mensaje en el topic Kafka `consultas.usuario`.
-3. **ia-master-brain** consume el mensaje, detecta la intención y lo enruta al subgrafo LangGraph correspondiente.
-4. El subgrafo llama a las APIs REST de Spring Boot según sea necesario (facturas, retención, tickets, etc.).
-5. La respuesta se publica en Kafka `respuestas.agente`.
-6. Spring Boot la recibe y la envía al frontend por WebSocket (`/user/{customerId}/queue/chat`).
+1. El usuario escribe en el **chat (React)** → publica en `/app/chat` por STOMP.
+2. **Spring Boot** publica el mensaje en Kafka topic `consultas.usuario`.
+3. **ia-master-brain** consume el mensaje:
+   - Si es la **primera vez** del cliente → **Haiku hace triage** (`CONSULTA` o `RECLAMO`).
+   - Si ya tiene ruta guardada en Redis → va directo sin triage.
+4. Las `CONSULTA` son respondidas por Haiku directamente (preguntas generales sin acceso a datos).
+5. Los `RECLAMO` van al `LlmBrain` que invoca el subgrafo LangGraph correspondiente.
+6. El subgrafo llama a las APIs REST de Spring Boot (facturas, tickets, retención, etc.).
+7. La respuesta se publica en Kafka `respuestas.agente`.
+8. Spring Boot la entrega al frontend por WebSocket (`/user/{customerId}/queue/chat`).
+
+---
+
+## Sistema de triaje (consumer)
+
+El consumer tiene dos caminos completamente separados antes de invocar el agente completo:
+
+```python
+# Primera vez → triage con Haiku (liviano, sin estado)
+CONSULTA → Haiku responde directamente (sin herramientas, sin LangGraph)
+RECLAMO  → set_route("BRAIN") → LlmBrain (LangGraph + tools)
+
+# Mensajes siguientes → ruta ya guardada en Redis (sin volver a clasificar)
+route == "BRAIN"    → procesar_brain()
+route == "CONSULTA" → responder_consulta()
+```
+
+Esto evita correr el agente completo para preguntas simples como "¿cuál es el horario de atención?" y reduce significativamente la latencia y el costo.
+
+---
+
+## Memoria de corto y largo plazo
+
+El sistema implementa una estrategia de memoria en dos niveles:
+
+### Corto plazo — Redis (sesión activa)
+
+- **Checkpointer LangGraph** en Redis almacena el estado completo de cada subgrafo (mensajes, `paso_actual`, datos del cliente, ofertas, etc.) con el thread_id `{flujo}-{customer_id}`.
+- **Ruteo activo** en Redis `db=1` con TTL de 24 hs: sabe si el cliente está en `BRAIN` o `CONSULTA` sin necesidad de reclasificar en cada mensaje.
+- Si Redis no está disponible, cae automáticamente a `MemorySaver` (en memoria del proceso).
+
+### Largo plazo — PostgreSQL (`conversation-db`)
+
+- Al finalizar una conversación general, los mensajes se **persisten en Postgres** (`conversation_history`).
+- En la próxima sesión, si Redis ya no tiene el estado, se **recuperan los últimos 5 mensajes** de Postgres como contexto inicial.
+- Esto da continuidad entre sesiones: el agente "recuerda" interacciones anteriores del cliente.
+
+```
+Nueva sesión
+     ↓
+¿Redis tiene estado?  →  Sí → usar directamente (sesión caliente)
+     ↓ No
+¿Postgres tiene historial? → Sí → cargar últimos 5 mensajes como contexto
+     ↓ No
+Conversación nueva sin historial
+```
+
+---
+
+## Flujos LangGraph — Independientes y conectados
+
+Los tres subgrafos son **completamente independientes**: cada uno tiene su propio estado (`TypedDict`), sus nodos, sus routers y su checkpointer en Redis con thread_id separado. Sin embargo, **se pueden conectar entre sí** mediante el estado del grafo de billing:
+
+```
+LlmBrain (orquestador)
+    │
+    ├── billing ──► [paso_actual = "ir_a_promise"]  ──► promise
+    │                [paso_actual = "ir_a_retention"] ──► retention
+    │
+    ├── promise  (entrada directa o desde billing)
+    │
+    └── retention (entrada directa, desde billing, o desde info_servicios)
+```
+
+Cada subgrafo termina siempre en `END` y preserva su estado en Redis. El orquestador decide en cada mensaje a cuál subgrafo derivar verificando el `paso_actual` de cada uno.
+
+### Subgrafo Billing
+
+Gestiona facturas, reclamos de pagos y derivaciones.
+
+```
+dispatcher → cargar_datos → conversar
+                                ├─ [reclamo]     → gestionar_reclamo → END
+                                ├─ [servicios]   → info_servicios
+                                │                      ├─ [retention] → marcar_retention → END
+                                │                      └─ [end]       → END
+                                ├─ [ir_a_promise]  → marcar_promise → END
+                                ├─ [ir_a_retention] → marcar_retention → END
+                                └─ END
+```
+
+El `dispatcher` evita re-ejecutar `cargar_datos` si el cliente ya está en medio de un reclamo (`esperando_datos_reclamo`) o consultando servicios (`info_servicios`).
+
+### Subgrafo Retention
+
+Negocia descuentos y aplica acuerdos de retención.
+
+```
+dispatcher → cargar_datos → generar_oferta → negociar → END
+    │              │               │              │
+    │         (eligibility)  (preview por    (LLM negocia
+    │                          servicio)      con cliente)
+    │
+    ├─ [acepta] → aplicar → END   (aplica todos los servicios de ofertas_preview)
+    └─ [rechaza] → END
+```
+
+El `dispatcher` detecta aceptación/rechazo **antes** de llamar a `nodo_negociar`, evitando loops. Al aceptar, aplica directamente todas las ofertas de `ofertas_preview` sin depender del LLM para extraer service_ids.
+
+### Subgrafo Promise
+
+Gestiona promesas de pago para reactivar servicios.
+
+```
+cargar_datos → explicacion_promesa → ejecutar_promesa → END
+```
+
+El router `router_explicacion` espera confirmación explícita del cliente antes de ejecutar la promesa.
 
 ---
 
@@ -60,8 +190,8 @@ Sistema de atención al cliente conversacional basado en IA para una empresa de 
 ### 1. Clonar el repositorio
 
 ```bash
-git clone <repo-url>
-cd mounstrov3
+git clone https://github.com/facuvgaa/agent-internet-ia.git
+cd agent-internet-ia
 ```
 
 ### 2. Configurar variables de entorno
@@ -70,7 +200,7 @@ cd mounstrov3
 cp .env.example .env
 ```
 
-Editá `.env` y completá al menos las credenciales AWS:
+Editá `.env` y completá las credenciales AWS:
 
 ```env
 AWS_ACCESS_KEY_ID=tu_access_key
@@ -84,13 +214,11 @@ AWS_REGION=us-east-1
 docker compose up --build
 ```
 
-El primer build tarda varios minutos (Maven descarga dependencias, npm compila). Los siguientes son mucho más rápidos gracias al cache de capas.
+El primer build tarda varios minutos (Maven descarga dependencias, npm compila). Los siguientes son más rápidos gracias al cache de capas Docker.
 
 Accedé al chat en: **http://localhost**
 
 ### Desarrollo local (sin Docker para el brain)
-
-Si preferís correr el brain directamente para desarrollo:
 
 ```bash
 # Infraestructura + backend
@@ -123,79 +251,23 @@ python -m kafka.consumer
 
 ---
 
-## Agente IA — Flujos LangGraph
-
-El cerebro (`ia-master-brain`) usa **LangGraph** para orquestar conversaciones con estado persistido en Redis. Tiene un grafo principal y tres subgrafos especializados.
-
-### Grafo principal — `LlmBrain`
-
-Detecta la intención del usuario (`billing` / `retention` / `general`) y delega al subgrafo correspondiente. Mantiene estado de qué flujo está activo por cliente.
-
-**Modelos:** Claude Haiku para triaje/routing (rápido y barato), Claude Sonnet para la conversación principal.
-
-### Subgrafo Billing
-
-Maneja todo lo relacionado con facturas y pagos.
-
-```
-dispatcher → cargar_datos → conversar
-                                ├── info_servicios ──► marcar_retention → [retention]
-                                ├── gestionar_reclamo (crea ticket)
-                                ├── marcar_promise → [promise]
-                                └── END
-```
-
-**Capacidades:**
-- Mostrar detalle de facturas y estado de cuenta
-- Crear tickets de reclamo (pago no impactado, cargo incorrecto, etc.)
-- Derivar a promesa de pago
-- Derivar a retención si el cliente pide descuentos
-
-### Subgrafo Retention (negociación de descuentos)
-
-Gestiona la negociación de promociones para retener clientes.
-
-```
-dispatcher → cargar_datos → generar_oferta → negociar ──► aplicar → END
-                                  │                  └──► END (rechazo)
-                              (eligibility
-                               + preview por servicio)
-```
-
-**Lógica de negociación:**
-1. Verifica elegibilidad del cliente por servicio
-2. Genera ofertas para el nivel mínimo disponible (mayor al descuento actual)
-3. LLM presenta la oferta y negocia con el cliente
-4. Si acepta → aplica el acuerdo en todos los servicios vía API
-5. Si rechaza → cierra la conversación
-
-### Subgrafo Promise (promesa de pago)
-
-Permite registrar una promesa de pago para reactivar servicios cortados.
-
-```
-cargar_datos → explicacion_promesa → ejecutar_promesa → END
-```
-
-### Tools disponibles
-
-El agente tiene acceso a 16 herramientas que llaman al backend:
+## Tools disponibles para el agente
 
 | Tool | Descripción |
 |---|---|
 | `get_customer_info` | Datos del cliente |
-| `get_customer_service` | Servicios contratados |
+| `get_customer_service` | Servicios contratados y descuentos activos |
 | `billing_info` | Facturas del cliente |
 | `billing_lookup` | Buscar factura por número |
 | `create_ticket` | Crear ticket de reclamo |
 | `payment_promises` | Registrar promesa de pago |
 | `grant_mobile_topup` | Recarga de crédito móvil |
 | `request_connection_reset` | Reinicio de conexión |
-| `run_network_diagnostic` | Diagnóstico de red |
+| `run_network_diagnostic` | Ejecutar diagnóstico de red |
 | `list_network_diagnostics` | Historial de diagnósticos |
-| `get_latest_network_diagnostic` | Último diagnóstico |
-| `get_retention_tiers` | Niveles de descuento disponibles |
-| `get_retention_eligibility` | Elegibilidad para retención |
+| `get_latest_network_diagnostic` | Último diagnóstico disponible |
+| `get_retention_tiers` | Niveles de descuento disponibles (1-4) |
+| `get_retention_eligibility` | Elegibilidad para retención por cliente/servicio |
 | `get_retention_preview` | Preview de oferta antes de aplicar |
 | `apply_retention_agreement` | Aplicar acuerdo de retención |
 | `list_available_offerings` | Servicios disponibles para contratar |
@@ -224,8 +296,8 @@ El agente tiene acceso a 16 herramientas que llaman al backend:
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| GET | `/tiers` | Niveles de descuento (1-4) |
-| GET | `/customers/{customerId}/eligibility` | Elegibilidad global o por `?serviceId=` |
+| GET | `/tiers` | Niveles de descuento disponibles |
+| GET | `/customers/{customerId}/eligibility` | Elegibilidad global o `?serviceId=` |
 | POST | `/preview` | Preview de oferta sin aplicar |
 | POST | `/applications` | Aplicar acuerdo de retención |
 
@@ -249,20 +321,22 @@ El agente tiene acceso a 16 herramientas que llaman al backend:
 mounstrov3/
 ├── docker-compose.yml
 ├── .env.example
-├── requirements.txt               # Dependencias Python
+├── requirements.txt
+├── imagen/
+│   └── diagrama.png
 │
 ├── ia-master-brain/
 │   ├── Dockerfile
 │   ├── agents/
-│   │   └── llm_brain.py           # Orquestador principal
+│   │   └── llm_brain.py           # Orquestador principal (routing + subgrafos)
 │   ├── flows/
-│   │   ├── billings/              # Flujo facturación
+│   │   ├── billings/              # Flujo facturación y reclamos
 │   │   │   ├── graph.py
 │   │   │   ├── nodes.py
 │   │   │   ├── routers.py
 │   │   │   ├── prompts.py
 │   │   │   └── state.py
-│   │   ├── retention/             # Flujo retención/descuentos
+│   │   ├── retention/             # Flujo negociación de descuentos
 │   │   │   ├── graph.py
 │   │   │   ├── nodes.py
 │   │   │   ├── routers.py
@@ -274,9 +348,9 @@ mounstrov3/
 │   │       ├── routers.py
 │   │       └── promps.py
 │   ├── kafka/
-│   │   └── consumer.py            # Entry point: consume y produce Kafka
+│   │   └── consumer.py            # Entry point: triage + loop Kafka
 │   ├── tools/
-│   │   └── tools.py               # Tools LangChain → APIs REST
+│   │   └── tools.py               # 16 tools LangChain → APIs REST
 │   ├── context_llm/
 │   │   └── contexts.py            # Prompts del agente Emma
 │   ├── memory/
@@ -286,11 +360,11 @@ mounstrov3/
 │
 ├── cliente_back/
 │   ├── Dockerfile
-│   └── src/main/java/com/cliente/ # Controllers, Services, Repositories
+│   └── src/main/java/com/cliente/ # Controllers, Services, Repositories, JPA
 │
 └── moustro-front/
     ├── Dockerfile
-    ├── nginx.conf
+    ├── nginx.conf                 # SPA + proxy /ws → Spring Boot
     └── src/
         ├── App.tsx                # Componente principal del chat
         └── hooks/
@@ -308,7 +382,7 @@ docker compose up --build
 # Solo infraestructura
 docker compose up kafka postgres postgrest redis
 
-# Ver logs del brain
+# Ver logs del brain en tiempo real
 docker logs -f ia-master-brain
 
 # Limpiar memoria Redis y Postgres para testing
@@ -322,3 +396,13 @@ docker exec conversations_db psql -U admin-llm -d conversation-db \
 docker compose build ia_brain
 docker compose up --no-deps -d ia_brain
 ```
+
+---
+
+## Licencia
+
+MIT License — Copyright (c) 2026 Facundo Vega
+
+Se permite el uso, copia, modificación, fusión, publicación, distribución, sublicencia y/o venta del software, siempre que se incluya este aviso de copyright en todas las copias o partes sustanciales del software.
+
+El software se proporciona "tal cual", sin garantía de ningún tipo.
