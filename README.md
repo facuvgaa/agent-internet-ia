@@ -406,3 +406,418 @@ MIT License — Copyright (c) 2026 Facundo Vega
 Se permite el uso, copia, modificación, fusión, publicación, distribución, sublicencia y/o venta del software, siempre que se incluya este aviso de copyright en todas las copias o partes sustanciales del software.
 
 El software se proporciona "tal cual", sin garantía de ningún tipo.
+
+---
+
+---
+
+# Mounstro v3 — AI-Powered Customer Service Agent
+
+Conversational customer service system for a telecommunications company. It integrates a real-time chat (WebSocket/STOMP), an LLM agent orchestrated with LangGraph and three specialized, independent workflows, with both short-term and long-term memory.
+
+**Repository:** https://github.com/facuvgaa/agent-internet-ia
+
+---
+
+## Architecture Diagram
+
+![Architecture diagram](imagen/diagrama.png)
+
+---
+
+## General Architecture
+
+```
+┌─────────────────┐   WebSocket/STOMP   ┌────────────────────────┐
+│  moustro-front  │ ◄──────────────────► │    cliente_back        │
+│  (React + Vite) │                      │  (Spring Boot :8080)   │
+└─────────────────┘                      └───────────┬────────────┘
+                                                     │  Kafka
+                                          ┌──────────▼────────────┐
+                                          │    ia-master-brain    │
+                                          │                       │
+                                          │  ┌─── Triage (Haiku)  │
+                                          │  │   QUERY  │  CLAIM  │
+                                          │  │          ▼         │
+                                          │  │      LlmBrain      │
+                                          │  │   ┌─────────────┐  │
+                                          │  │   │   billing   │  │
+                                          │  │   │   promise   │  │
+                                          │  │   │   retention │  │
+                                          │  │   └─────────────┘  │
+                                          └──────────┬────────────┘
+                                                     │
+                              ┌──────────────────────┼──────────────────────┐
+                         Redis (short-term)     Postgres ×2          AWS Bedrock
+                         checkpointer +         internet-db +          (Claude)
+                         active routing         conversation-db
+                                                (long-term)
+```
+
+### Message flow
+
+1. The user types in the **React chat** → published to `/app/chat` via STOMP.
+2. **Spring Boot** publishes the message to the Kafka topic `consultas.usuario`.
+3. **ia-master-brain** consumes the message:
+   - **First time** for this customer → **Haiku performs triage** (`QUERY` or `CLAIM`).
+   - Route already stored in Redis → goes directly without re-classifying.
+4. `QUERY` messages are answered by Haiku directly (general questions, no customer data access).
+5. `CLAIM` messages go to `LlmBrain`, which invokes the appropriate LangGraph subgraph.
+6. The subgraph calls the Spring Boot REST APIs (invoices, tickets, retention, etc.).
+7. The response is published to Kafka `respuestas.agente`.
+8. Spring Boot delivers it to the frontend via WebSocket (`/user/{customerId}/queue/chat`).
+
+---
+
+## Triage System (consumer)
+
+The consumer has two completely separate paths before invoking the full agent:
+
+```python
+# First message → triage with Haiku (lightweight, stateless)
+QUERY → Haiku answers directly (no tools, no LangGraph)
+CLAIM → set_route("BRAIN") → LlmBrain (LangGraph + tools)
+
+# Subsequent messages → route already stored in Redis (no re-classification)
+route == "BRAIN"   → procesar_brain()
+route == "QUERY"   → responder_consulta()
+```
+
+This avoids running the full agent for simple questions like "what are your business hours?" and significantly reduces latency and cost.
+
+---
+
+## Short-term and Long-term Memory
+
+The system implements a two-level memory strategy:
+
+### Short-term — Redis (active session)
+
+- **LangGraph checkpointer** in Redis stores the complete state of each subgraph (messages, `paso_actual`, customer data, offers, etc.) using thread_id `{flow}-{customer_id}`.
+- **Active routing** in Redis `db=1` with a 24h TTL: knows whether the customer is in `BRAIN` or `QUERY` mode without re-classifying on every message.
+- If Redis is unavailable, it automatically falls back to `MemorySaver` (in-process memory).
+
+### Long-term — PostgreSQL (`conversation-db`)
+
+- When a general conversation ends, messages are **persisted in Postgres** (`conversation_history`).
+- On the next session, if Redis no longer has the state, the **last 5 messages** are recovered from Postgres as initial context.
+- This provides continuity across sessions: the agent "remembers" previous customer interactions.
+
+```
+New session
+     ↓
+Redis has state?  →  Yes → use directly (warm session)
+     ↓ No
+Postgres has history? → Yes → load last 5 messages as context
+     ↓ No
+Fresh conversation with no history
+```
+
+---
+
+## LangGraph Workflows — Independent and Connected
+
+The three subgraphs are **completely independent**: each has its own state (`TypedDict`), nodes, routers and Redis checkpointer with a separate thread_id. However, **they can connect to each other** through the billing graph state:
+
+```
+LlmBrain (orchestrator)
+    │
+    ├── billing ──► [paso_actual = "ir_a_promise"]   ──► promise
+    │               [paso_actual = "ir_a_retention"] ──► retention
+    │
+    ├── promise   (direct entry or from billing)
+    │
+    └── retention (direct entry, from billing, or from info_servicios)
+```
+
+Each subgraph always ends at `END` and preserves its state in Redis. The orchestrator decides on every message which subgraph to route to by checking `paso_actual` on each one.
+
+### Billing Subgraph
+
+Handles invoices, payment claims and handoffs.
+
+```
+dispatcher → cargar_datos → conversar
+                                ├─ [claim]      → gestionar_reclamo → END
+                                ├─ [services]   → info_servicios
+                                │                     ├─ [retention] → marcar_retention → END
+                                │                     └─ [end]       → END
+                                ├─ [ir_a_promise]   → marcar_promise   → END
+                                ├─ [ir_a_retention] → marcar_retention → END
+                                └─ END
+```
+
+The `dispatcher` avoids re-executing `cargar_datos` if the customer is already mid-claim (`esperando_datos_reclamo`) or browsing services (`info_servicios`).
+
+### Retention Subgraph
+
+Negotiates discounts and applies retention agreements.
+
+```
+dispatcher → cargar_datos → generar_oferta → negociar → END
+    │              │               │              │
+    │         (eligibility)  (preview per     (LLM negotiates
+    │                          service)        with customer)
+    │
+    ├─ [accepts] → aplicar → END   (applies all services in ofertas_preview)
+    └─ [rejects] → END
+```
+
+The `dispatcher` detects acceptance/rejection **before** calling `nodo_negociar`, preventing loops. On acceptance, it directly applies all offers from `ofertas_preview` without relying on the LLM to extract service IDs.
+
+### Promise Subgraph
+
+Handles payment promises to reactivate suspended services.
+
+```
+cargar_datos → explicacion_promesa → ejecutar_promesa → END
+```
+
+The `router_explicacion` waits for explicit customer confirmation before executing the promise.
+
+---
+
+## Services
+
+| Service | Technology | Port |
+|---|---|---|
+| `moustro-front` | React + Vite + nginx | 80 |
+| `cliente_back` | Spring Boot 3 / Java 21 | 8080 |
+| `ia_brain` | Python 3.12 + LangGraph | — (worker) |
+| `kafka` | Confluent Kafka 7.5 | 9092 |
+| `postgres` (`internet-db`) | PostgreSQL 15 | 5432 |
+| `postgrest` (`conversation-db`) | PostgreSQL 15 | 5433 |
+| `redis` | Redis Stack | 6379 |
+
+---
+
+## Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/) v2
+- **AWS Bedrock** credentials with access to `claude-3-haiku` and `claude-sonnet-4-6` models
+
+---
+
+## Getting Started
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/facuvgaa/agent-internet-ia.git
+cd agent-internet-ia
+```
+
+### 2. Configure environment variables
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and fill in your AWS credentials:
+
+```env
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_REGION=us-east-1
+```
+
+### 3. Start everything
+
+```bash
+docker compose up --build
+```
+
+The first build takes several minutes (Maven downloads dependencies, npm compiles). Subsequent builds are much faster thanks to Docker layer caching.
+
+Access the chat at: **http://localhost**
+
+### Local development (without Docker for the brain)
+
+```bash
+# Infrastructure + backend
+docker compose up kafka postgres postgrest redis cliente_back
+
+# Brain locally
+cd ia-master-brain
+pip install -r ../requirements.txt
+python -m kafka.consumer
+```
+
+---
+
+## Environment Variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `AWS_ACCESS_KEY_ID` | AWS credential | — |
+| `AWS_SECRET_ACCESS_KEY` | AWS credential | — |
+| `AWS_SESSION_TOKEN` | Only for temporary credentials | — |
+| `AWS_REGION` | Bedrock region | `us-east-1` |
+| `AWS_PRIMARY_LLM` | Haiku model (triage/routing) | `anthropic.claude-3-haiku-20240307-v1:0` |
+| `AWS_SECOND_LLM` | Sonnet model (conversation) | `us.anthropic.claude-sonnet-4-6` |
+| `BACK_API` | internet-ia API base URL | `http://localhost:8080/api/v1/internet-ia` |
+| `BACK_RETENTION_API` | Retention API base URL | `http://localhost:8080/api/v1/retention` |
+| `BACK_SERVICE_API` | Available services API base URL | `http://localhost:8080/api/v1/available-services` |
+| `CONVERSATION_DB` | Conversation PostgreSQL | `postgresql://...@localhost:5433/conversation-db` |
+| `MEMORY_REDIS_URL` | LangGraph Redis checkpointer | `redis://localhost:6379` |
+| `KAFKA_BOOTSTRAP` | Kafka bootstrap servers | `localhost:9092` |
+
+---
+
+## Available Agent Tools
+
+| Tool | Description |
+|---|---|
+| `get_customer_info` | Customer data |
+| `get_customer_service` | Contracted services and active discounts |
+| `billing_info` | Customer invoices |
+| `billing_lookup` | Look up invoice by number |
+| `create_ticket` | Create a support ticket |
+| `payment_promises` | Register a payment promise |
+| `grant_mobile_topup` | Mobile credit top-up |
+| `request_connection_reset` | Reset connection |
+| `run_network_diagnostic` | Run network diagnostic |
+| `list_network_diagnostics` | Diagnostic history |
+| `get_latest_network_diagnostic` | Latest diagnostic result |
+| `get_retention_tiers` | Available discount levels (1–4) |
+| `get_retention_eligibility` | Retention eligibility per customer/service |
+| `get_retention_preview` | Offer preview before applying |
+| `apply_retention_agreement` | Apply retention agreement |
+| `list_available_offerings` | Services available to contract |
+
+---
+
+## REST APIs (`cliente_back`)
+
+### `/api/v1/internet-ia`
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/customers/{customerId}` | Customer data |
+| GET | `/customers/services/{customerId}` | Active services |
+| GET | `/billing/customer/{customerId}` | Invoices |
+| GET | `/billing/customer/{customerId}/lookup?invoiceNumber=` | Look up invoice |
+| POST | `/tickets` | Create support ticket |
+| POST | `/payment-promises` | Register payment promise |
+| POST | `/mobile-topups` | Mobile top-up |
+| POST | `/connection-resets` | Reset connection |
+| POST | `/network-diagnostics` | Run diagnostic |
+| GET | `/network-diagnostics/customers/{id}/services/{sid}` | Diagnostic history |
+| GET | `/network-diagnostics/customers/{id}/services/{sid}/latest` | Latest diagnostic |
+
+### `/api/v1/retention`
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/tiers` | Available discount levels |
+| GET | `/customers/{customerId}/eligibility` | Global eligibility or `?serviceId=` |
+| POST | `/preview` | Offer preview without applying |
+| POST | `/applications` | Apply retention agreement |
+
+### `/api/v1/available-services`
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/customers/{customerId}/offerings` | Services available to contract |
+
+### WebSocket
+
+- **Endpoint:** `ws://localhost:8080/ws` (SockJS)
+- **Send message:** `/app/chat` with `{ contenido: string, customerId: string }`
+- **Receive response:** `/user/{customerId}/queue/chat`
+
+---
+
+## Project Structure
+
+```
+mounstrov3/
+├── docker-compose.yml
+├── .env.example
+├── requirements.txt
+├── imagen/
+│   └── diagrama.png
+│
+├── ia-master-brain/
+│   ├── Dockerfile
+│   ├── agents/
+│   │   └── llm_brain.py           # Main orchestrator (routing + subgraphs)
+│   ├── flows/
+│   │   ├── billings/              # Billing and claims workflow
+│   │   │   ├── graph.py
+│   │   │   ├── nodes.py
+│   │   │   ├── routers.py
+│   │   │   ├── prompts.py
+│   │   │   └── state.py
+│   │   ├── retention/             # Discount negotiation workflow
+│   │   │   ├── graph.py
+│   │   │   ├── nodes.py
+│   │   │   ├── routers.py
+│   │   │   ├── promps.py
+│   │   │   └── state.py
+│   │   └── promise/               # Payment promise workflow
+│   │       ├── graph.py
+│   │       ├── nodes.py
+│   │       ├── routers.py
+│   │       └── promps.py
+│   ├── kafka/
+│   │   └── consumer.py            # Entry point: triage + Kafka loop
+│   ├── tools/
+│   │   └── tools.py               # 16 LangChain tools → REST APIs
+│   ├── context_llm/
+│   │   └── contexts.py            # Agent Emma prompts
+│   ├── memory/
+│   │   └── memory_brain.py        # Redis checkpointer + Postgres history
+│   └── connection_llm/
+│       └── llm_conecction.py      # Bedrock clients (Haiku / Sonnet)
+│
+├── cliente_back/
+│   ├── Dockerfile
+│   └── src/main/java/com/cliente/ # Controllers, Services, Repositories, JPA
+│
+└── moustro-front/
+    ├── Dockerfile
+    ├── nginx.conf                 # SPA + /ws proxy → Spring Boot
+    └── src/
+        ├── App.tsx                # Main chat component
+        └── hooks/
+            └── useChat.ts         # WebSocket/STOMP hook
+```
+
+---
+
+## Useful Commands
+
+```bash
+# Start everything
+docker compose up --build
+
+# Infrastructure only
+docker compose up kafka postgres postgrest redis
+
+# Follow brain logs
+docker logs -f ia-master-brain
+
+# Clear Redis and Postgres memory for testing
+docker exec redis_memory redis-cli FLUSHALL
+docker exec postgrest-agent psql -U admin-agent -d internet-db \
+  -c "TRUNCATE TABLE tickets, retention_applications, payment_promises RESTART IDENTITY CASCADE;"
+docker exec conversations_db psql -U admin-llm -d conversation-db \
+  -c "TRUNCATE TABLE conversation_history RESTART IDENTITY CASCADE;"
+
+# Rebuild a single service
+docker compose build ia_brain
+docker compose up --no-deps -d ia_brain
+```
+
+---
+
+## License
+
+MIT License — Copyright (c) 2026 Facundo Vega
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
