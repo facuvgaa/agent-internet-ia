@@ -80,12 +80,27 @@ class LlmBrain:
         billing_state   = self.subgrafos["billing"].get_state(config_billing)
         retention_state = self.subgrafos["retention"].get_state(config_retention)
 
-        tiene_billing_activo   = bool(billing_state and billing_state.values.get("messages"))
-        tiene_retention_activo = bool(retention_state and retention_state.values.get("messages"))
+        PASOS_RETENTION_CERRADOS = {"no_elegible", "sin_ofertas", "retencion_aplicada", "error_aplicar"}
+        PASOS_BILLING_CERRADOS   = {"ir_a_promise", "ir_a_retention"}
+        tiene_billing_activo   = bool(
+            billing_state
+            and billing_state.values.get("messages")
+            and billing_state.values.get("paso_actual") not in PASOS_BILLING_CERRADOS
+        )
+        tiene_retention_activo = bool(
+            retention_state
+            and retention_state.values.get("messages")
+            and retention_state.values.get("paso_actual") not in PASOS_RETENTION_CERRADOS
+        )
 
         if tiene_retention_activo:
-            intent = "retention"
-            logger.info(f"[BRAIN] Conversación de retention activa para cliente {customer_id}, ruteando directo")
+            intent_check = self._get_intent(input_text)
+            if intent_check == "billing":
+                intent = "billing"
+                logger.info(f"[BRAIN] Retention activa pero cliente cambió a billing para cliente {customer_id}")
+            else:
+                intent = "retention"
+                logger.info(f"[BRAIN] Retention activa para cliente {customer_id}, manteniendo flujo (intent_check={intent_check})")
         elif tiene_billing_activo:
             intent = "billing"
             logger.info(f"[BRAIN] Conversación de billing activa para cliente {customer_id}, ruteando directo")
@@ -119,7 +134,7 @@ class LlmBrain:
                 config_promise = {"configurable": {"thread_id": f"promise-{customer_id}"}}
                 return self.subgrafos["promise"].invoke(
                     {
-                        "messages":    [HumanMessage(content=input_text)],
+                        "messages":    result.get("messages", [HumanMessage(content=input_text)]),
                         "customer_id": str(customer_id),
                     },
                     config=config_promise,
@@ -129,7 +144,7 @@ class LlmBrain:
                 logger.info(f"[BRAIN] Saltando a retention flow desde billing para cliente {customer_id}")
                 return self.subgrafos["retention"].invoke(
                     {
-                        "messages":    [HumanMessage(content=input_text)],
+                        "messages":    result.get("messages", [HumanMessage(content=input_text)]),
                         "customer_id": int(customer_id),
                     },
                     config=config_retention,

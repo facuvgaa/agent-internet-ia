@@ -3,7 +3,7 @@ import logging
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from flows.retention.state import RetentionState
 from tools.tools import get_customer_info, get_customer_service ,get_retention_eligibility, get_retention_tiers, get_retention_preview, apply_retention_agreement
-from .promps import PROMPT_NEGOCIACION, ROUTE_NEGOCIACION, SYSTEM_EXTRAER_ACUERDO
+from .promps import PROMPT_NEGOCIACION
 
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ def nodo_cargar_datos(state: RetentionState) -> dict:
     }
 
 
-def nodo_generar_oferta(state:RetentionState, model)-> dict:
+def nodo_generar_oferta(state: RetentionState) -> dict:
 
     customer_id= state["customer_id"]
 
@@ -50,7 +50,7 @@ def nodo_generar_oferta(state:RetentionState, model)-> dict:
 
     for servicio in servicios:
         service_id = servicio.get("id")
-        descuento_actual = float(servicios.get("discountPercentage")or 0)
+        descuento_actual = float(servicio.get("discountPercentage") or 0)
         
         elig_raw = get_retention_eligibility.invoke({
             "customer_id":customer_id,
@@ -115,31 +115,37 @@ def nodo_negociar(state: RetentionState, model) -> dict:
     mensajes = [SystemMessage(content=prompt)] + msgs
     respuesta = model.invoke(mensajes)
     return {"messages": [respuesta], "paso_actual": "negociando"}
-def nodo_aplicar_retencion(state: RetentionState, model_haiku) -> dict:
+
+def nodo_aplicar_retencion(state: RetentionState) -> dict:
+    """Aplica todas las ofertas que están en ofertas_preview. No usa LLM."""
     ofertas = state.get("ofertas_preview") or []
-    historial = "\n".join([f"{type(m).__name__}: {m.content}" for m in state["messages"]])
-    prompt = SYSTEM_EXTRAER_ACUERDO.format(
-        conversacion=historial,
-        ofertas=ofertas,
-    )
-    resultado = model_haiku.invoke([SystemMessage(content=prompt)])
-    try:
-        datos = json.loads(resultado.content.strip())
-    except Exception:
-        logger.error("[retention] haiku no devolvió JSON válido: %s", resultado.content)
-        return {
-            "messages": [AIMessage(content="Hubo un problema al registrar la promoción. ¿Podés confirmar nuevamente?")],
-            "paso_actual": "error_aplicar",
-        }
+
     confirmaciones = []
-    for acuerdo in datos.get("acuerdos", []):
+    for oferta in ofertas:
+        service_id = oferta.get("service_id")
+        level      = oferta.get("nivel_actual")
+        if service_id is None or level is None:
+            logger.warning("[retention] oferta sin service_id o nivel_actual, skip: %s", oferta)
+            continue
         msg = apply_retention_agreement.invoke({
             "customer_id": state["customer_id"],
-            "service_id": acuerdo["service_id"],
-            "level": acuerdo["level"],
-            "channel": "IA",
+            "service_id":  service_id,
+            "level":       level,
+            "channel":     "IA",
         })
+        logger.info("[retention] aplicado service_id=%s level=%s resultado=%s", service_id, level, msg)
         confirmaciones.append(msg)
-        
-    texto_final = "\n".join(confirmaciones) if confirmaciones else "No se registró ningún acuerdo."
-  
+
+    if confirmaciones:
+        texto_final = (
+            "✅ ¡Listo! Las promociones quedaron registradas en tu cuenta.\n\n"
+            "En tu **próxima factura** vas a ver impactados los nuevos descuentos. "
+            "Cualquier duda que tengas, estoy acá. ¿Necesitás algo más?"
+        )
+    else:
+        texto_final = "No se pudo registrar ninguna promoción. Intentá de nuevo o contactá soporte."
+
+    return {
+        "messages":    [AIMessage(content=texto_final)],
+        "paso_actual": "retencion_aplicada",
+    }

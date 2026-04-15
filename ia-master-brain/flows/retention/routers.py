@@ -24,10 +24,12 @@ def router_negociacion(state: RetentionState, model_haiku) -> Literal["negociar"
         return "end"
 
     mensajes = state.get("messages", [])
-    if not mensajes or not isinstance(mensajes[-1], HumanMessage):
+    if not mensajes:
         return "end"
 
     humanos = [m for m in mensajes if isinstance(m, HumanMessage)]
+    if not humanos:
+        return "end"
     ultimo_humano = humanos[-1].content
 
     prompt = ROUTE_NEGOCIACION.format(mensaje=ultimo_humano)

@@ -50,13 +50,14 @@ def delete_route(customer_id: str) -> None:
     redis_route.delete(f"route:{customer_id}")
 
 # --- KAFKA ---
+_KAFKA_BOOTSTRAP = os.getenv("KAFKA_BOOTSTRAP", "localhost:9092")
 consumer = Consumer({
-    'bootstrap.servers': 'localhost:9092',
+    'bootstrap.servers': _KAFKA_BOOTSTRAP,
     'group.id': 'agente-primario-group',
     'auto.offset.reset': 'earliest',
     'enable.auto.commit': False,
 })
-producer = Producer({'bootstrap.servers': 'localhost:9092'})
+producer = Producer({'bootstrap.servers': _KAFKA_BOOTSTRAP})
 RESPUESTAS_TOPIC = 'respuestas.agente'
 consumer.subscribe(['consultas.usuario'])
 

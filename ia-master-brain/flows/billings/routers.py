@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 
-def router_principal(state: BillingEstate, model_haiku) -> Literal["info_servicios", "gestionar_reclamo", "ir_a_promise", "end"]:
+def router_principal(state: BillingEstate, model_haiku) -> Literal["info_servicios", "gestionar_reclamo", "ir_a_promise", "ir_a_retention", "end"]:
     mensajes = state.get("messages", [])
     if not mensajes:
         return "end"
@@ -33,6 +33,8 @@ def router_principal(state: BillingEstate, model_haiku) -> Literal["info_servici
 
     if "promise" in decision:
         return "ir_a_promise"
+    if "retention" in decision:
+        return "ir_a_retention"
     if "reclamo" in decision:
         return "gestionar_reclamo"
     if "servicios" in decision:
@@ -62,6 +64,4 @@ def router_servicios(state: BillingEstate, model_haiku) -> Literal["gestionar_re
         return "gestionar_reclamo"
     if decision == "retention":
         return "ir_a_retention"
-    if decision == "cierre":
-        return "end"
-    return "info_servicios"
+    return "end"

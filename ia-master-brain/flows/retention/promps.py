@@ -11,21 +11,28 @@ REGLAS DE NEGOCIACIÓN:
 - NUNCA inventes descuentos ni precios que no estén en las ofertas.
 - Hablá en primera persona, de forma natural. No uses listas de reglas con el cliente.
 
-CÓMO PRESENTAR CADA OFERTA (obligatorio, siempre que tengas los números):
-Al mostrar una oferta, explicá los tres valores en este orden:
-1. "Hoy estás pagando ${{base_price}}"
-2. "Con el descuento del {{discount_percent}}% pasarías a pagar ${{precio_con_descuento}}"
-3. "Y si abonás con ClaroPay tenés un {cashback}% de cashback, o sea que te quedaría en ${{precio_final_con_cashback}}"
+FORMATO DE PRESENTACIÓN — SÉ DIRECTO Y CONCISO:
+Nada de títulos, nada de secciones por servicio. Todo en un solo bloque así:
 
-El precio_final_con_cashback lo calculás así: precio_con_descuento * (1 - {cashback}/100), redondeado a 2 decimales.
-Si no tenés el precio base (es null), explicá el descuento en porcentaje nomás sin inventar números."""
+"Tengo esto para vos con un X% de descuento por N meses:
+
+[servicio]: pagás $X → pasarías a pagar $Y
+[servicio]: pagás $X → pasarías a pagar $Y
+...
+
+En total pasarías de $TOTAL_ACTUAL a $TOTAL_CON_DESCUENTO. Y si pagás con ClaroPay ({cashback}% cashback) te quedaría en $TOTAL_CON_CASHBACK. ¿Lo tomamos?"
+
+Calculá el precio_final_con_cashback así: precio_con_descuento * (1 - {cashback}/100), redondeado a 2 decimales.
+Si un servicio no tiene precio base, omitilo del cálculo total pero mencioná que aplica el descuento.
+PROHIBIDO usar headers (###), listas con guiones por servicio, o separadores (---). Todo junto, limpio y rápido."""
 
 
-ROUTE_NEGOCIACION = """Analizá el último mensaje del cliente en el contexto de una negociación de descuento/retención.
+ROUTE_NEGOCIACION = """Contexto: se le acaba de mostrar una oferta de descuento al cliente. Analizá su respuesta.
 
-- 'acepta': el cliente acepta la oferta o algún descuento (frases como "sí", "dale", "ok", "acepto", "me sirve", "lo tomo", "está bien", "perfecto", "confirmado", "sí quiero")
-- 'rechaza': el cliente rechaza definitivamente y no quiere nada (frases como "no", "no gracias", "no me interesa", "no quiero ninguno", "dejalo así")
-- 'continua': el cliente tiene dudas, pide más info, negocia, o no quedó claro si acepta o rechaza
+REGLAS (en orden de prioridad):
+1. Si el mensaje contiene "no" de forma explícita y definitiva ("no gracias", "no quiero", "no me interesa", "no", "dejalo así") → 'rechaza'
+2. Si el mensaje contiene "sí", "si", "dale", "ok", "bueno", "claro", "estaría", "gustaría", "confirmo", "acepto", "quiero", "me gusta", "tomalo", "aplicalo" o cualquier expresión positiva → 'acepta'
+3. Si el cliente hace una pregunta, pide más detalle, o no queda claro → 'continua'
 
 Mensaje: "{mensaje}"
 Respondé SOLO con una palabra: acepta / rechaza / continua"""

@@ -67,18 +67,17 @@ def nodo_info_servicios(state: BillingEstate, model):
     respuesta = model.invoke(mensajes_finales)
 
     return {
-        "messages": [respuesta], 
-        "servicios": servicios_ready
+        "messages":    [respuesta],
+        "servicios":   servicios_ready,
+        "paso_actual": "info_servicios",
     }
 
 def nodo_gestionar_reclamo(state: BillingEstate, model_haiku) -> dict:
     historial = state["messages"]
     conversacion_limpia = "\n".join([f"{type(m).__name__}: {m.content}" for m in historial])
-    
+
     prompt_haiku = SYSTEM_RECLAMO.format(conversacion=conversacion_limpia)
-
     datos_ticket = model_haiku.invoke([SystemMessage(content=prompt_haiku)])
-
     contenido = datos_ticket.content.strip()
 
     match = re.search(r'\{[^{}]*"factura_id"[^{}]*\}', contenido, re.DOTALL)
@@ -92,17 +91,39 @@ def nodo_gestionar_reclamo(state: BillingEstate, model_haiku) -> dict:
     try:
         datos_json = json.loads(contenido)
     except Exception:
-        logger.error(f"Haiku fallo en el JSON, usando defaults. Contenido: {contenido}")
-        datos_json = {
-            "factura_id": "N/A",
-            "motivo": "Reclamo general de facturación",
-            "prioridad": "media"
+        logger.error(f"Haiku fallo en el JSON. Contenido: {contenido}")
+        datos_json = {}
+
+    medio_pago    = datos_json.get("medio_pago")
+    fecha_pago    = datos_json.get("fecha_pago")
+    comprobante   = datos_json.get("comprobante")
+    factura_id    = datos_json.get("factura_id")
+    tipo_reclamo  = datos_json.get("tipo_reclamo") or "Reclamo de facturación"
+    descripcion   = datos_json.get("descripcion") or tipo_reclamo
+    prioridad     = datos_json.get("prioridad") or "alta"
+
+    # Si faltan datos reales, pedir al cliente lo que falta
+    faltantes = []
+    if not medio_pago:
+        faltantes.append("medio de pago (ej: Mercado Pago, transferencia, etc.)")
+    if not fecha_pago:
+        faltantes.append("fecha en que realizaste el pago")
+    if not comprobante:
+        faltantes.append("número de comprobante o transacción")
+
+    if faltantes:
+        lista = "\n".join(f"- {f}" for f in faltantes)
+        msg = f"Para registrar el reclamo necesito que me confirmes:\n{lista}"
+        logger.info("[reclamo] datos incompletos, faltan: %s", faltantes)
+        return {
+            "messages":    [AIMessage(content=msg)],
+            "paso_actual": "esperando_datos_reclamo",
         }
 
-    factura_id = datos_json.get("factura_id") or "N/A"
-    motivo     = datos_json.get("motivo") or "Reclamo general de facturación"
-    prioridad  = datos_json.get("prioridad") or "media"
-    subject    = f"[{factura_id}] {motivo}" if factura_id != "N/A" else motivo
+    # Tenemos todo — crear ticket
+    base = f"[{factura_id}] " if factura_id else ""
+    subject = f"{base}{tipo_reclamo} — {descripcion} | Comprobante: {comprobante}"
+    subject = subject[:200]
 
     resultado_api = create_ticket.invoke({
         "customer_id": int(state["customer_id"]),
@@ -111,8 +132,24 @@ def nodo_gestionar_reclamo(state: BillingEstate, model_haiku) -> dict:
     })
 
     ticket_id = resultado_api.get("ticket_id", "ERROR") if isinstance(resultado_api, dict) else "ERROR"
+    logger.info("[reclamo] ticket creado id=%s subject=%s", ticket_id, subject)
 
-    msg_confirmacion = f"He registrado tu reclamo con el ID: {ticket_id}. ¿Deseas consultar algo más sobre tus servicios?"
+    factura_str = f"**{factura_id}**" if factura_id else "—"
+    msg_confirmacion = (
+        f"✅ Reclamo registrado correctamente. Acá el resumen:\n\n"
+        f"| Dato | Detalle |\n"
+        f"|---|---|\n"
+        f"| 🎫 N° de reclamo | **#{ticket_id}** |\n"
+        f"| 📋 Motivo | {tipo_reclamo} |\n"
+        f"| 📄 Factura | {factura_str} |\n"
+        f"| 📅 Fecha de pago | {fecha_pago} |\n"
+        f"| 💳 Medio de pago | {medio_pago} |\n"
+        f"| 🔢 Comprobante | {comprobante} |\n"
+        f"| ⚡ Prioridad | {prioridad.upper()} |\n\n"
+        f"_{descripcion}_\n\n"
+        f"El equipo de cobranzas va a verificar tu pago en las próximas 48 hs hábiles. "
+        f"Mientras tanto **el servicio no se corta**. ¿Necesitás algo más?"
+    )
     return {
         "messages":    [AIMessage(content=msg_confirmacion)],
         "ticket_id":   ticket_id,

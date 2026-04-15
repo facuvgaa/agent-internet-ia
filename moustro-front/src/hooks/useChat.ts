@@ -29,8 +29,11 @@ export function useChat(customerId: string) {
 
         if (cancelled) return;
 
+        const WS_URL = import.meta.env.VITE_WS_URL
+          ? `${window.location.origin}${import.meta.env.VITE_WS_URL}`
+          : 'http://localhost:8080/ws';
         const stompClient = new Client({
-          webSocketFactory: () => new (SockJS as unknown as new (url: string) => object)('http://localhost:8080/ws'),
+          webSocketFactory: () => new (SockJS as unknown as new (url: string) => object)(WS_URL),
           reconnectDelay: 5000,
           onConnect: () => {
             setConectado(true);
