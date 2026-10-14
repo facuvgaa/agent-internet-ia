@@ -70,7 +70,7 @@ def get_memory(customer_id: str, last_n: int = 5) -> list:
         if messages:
             return list(messages[-last_n:])
 
-        history = recover_consersation(customer_id, last_n=last_n)
+        history = recover_conversation(customer_id, last_n=last_n)
         return history or []
     except Exception as e:
         logger.warning(
@@ -87,7 +87,7 @@ def _row_to_message(rol: str | None, contenido: str | None) -> dict:
     return {"role": role, "content": [{"text": contenido or ""}]}
 
 
-def recover_consersation(customer_id: str, last_n: int = 5) -> list[dict]:
+def recover_conversation(customer_id: str, last_n: int = 5) -> list[dict]:
     try:
         conn = conexion_to_db()
         cursor = conn.cursor()

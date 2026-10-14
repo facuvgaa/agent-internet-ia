@@ -101,7 +101,7 @@ El ID del cliente es {customer_id}. PROHIBIDO pedirle datos de identificación.
 Respondé consultas generales sobre planes, cobertura, horarios o cualquier otro tema.
 Si el cliente menciona un problema específico con su cuenta o servicio, usá las tools disponibles para ayudarlo.
 Respondé en español, tono amable y profesional.
-Cuando la conversación esté resuelta, preguntá "¿Necesitás algo más?"""
+Cuando la conversación esté resuelta, preguntá "¿Necesitás algo más?\""""
 
 
 # ── Función principal ────────────────────────────────────────────────────────

@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # ── Inicialización del cliente MCP ────────────────────────────────────────────
-MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:8080/mcp/message")
+MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:8080/mcp")
 try:
     initialize_mcp(MCP_SERVER_URL)
     logger.info("[MCP] client inicializado en %s", MCP_SERVER_URL)
@@ -166,16 +166,26 @@ def procesar_brain(content: str, customer_id: str) -> tuple[str, bool]:
     user_message = {"role": "user", "content": [{"text": content}]}
     initial_messages = (memory or []) + [user_message]
 
-    result_state = brain_graph.invoke(
-        {
+    # Solo pasar domain/paso_actual en el primer turno (sin checkpoint activo).
+    # En turnos posteriores, LangGraph restaura esos campos desde el checkpoint;
+    # pasarlos vacíos los sobreescribiría (state clobbering).
+    existing_checkpoint = checkpointer.get_tuple(config) if checkpointer is not None else None
+    if existing_checkpoint is None:
+        invoke_input = {
             "messages": initial_messages,
             "customer_id": str(customer_id),
             "domain": "",
             "paso_actual": "",
             "ultima_respuesta": "",
-        },
-        config=config,
-    )
+        }
+    else:
+        invoke_input = {
+            "messages": [user_message],
+            "customer_id": str(customer_id),
+            "ultima_respuesta": "",
+        }
+
+    result_state = brain_graph.invoke(invoke_input, config=config)
 
     respuesta = _clean_response(result_state.get("ultima_respuesta", ""))
 
