@@ -37,3 +37,4 @@ public class NetworkDiagnosticPersistenceAdapter implements NetworkDiagnosticRep
                 .map(networkDiagnosticMapper::toDomain);
     }
 }
+

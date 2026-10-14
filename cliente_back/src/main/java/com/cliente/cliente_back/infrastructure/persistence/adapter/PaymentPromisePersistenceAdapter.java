@@ -27,3 +27,4 @@ public class PaymentPromisePersistenceAdapter implements PaymentPromiseRepositor
         return paymentPromiseRepository.findById(id).map(paymentPromiseMapper::toDomain);
     }
 }
+

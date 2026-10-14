@@ -10,3 +10,4 @@ public interface NetworkDiagnosticUseCase {
     List<NetworkDiagnosticResponseDTO> findByCustomerIdAndServiceIdOrderByCreatedAtDesc(Long customerId, Long serviceId);
     Optional<NetworkDiagnosticResponseDTO> findFirstByCustomerIdAndServiceIdOrderByCreatedAtDesc(Long customerId, Long serviceId);
 }
+

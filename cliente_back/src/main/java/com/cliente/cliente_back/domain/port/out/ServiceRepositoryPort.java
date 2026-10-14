@@ -10,3 +10,4 @@ public interface ServiceRepositoryPort {
     ServiceSubscription save(ServiceSubscription service);
     boolean existsById(Long id);
 }
+

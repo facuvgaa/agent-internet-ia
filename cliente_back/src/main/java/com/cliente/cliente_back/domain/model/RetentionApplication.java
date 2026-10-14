@@ -26,3 +26,4 @@ public class RetentionApplication {
     private RetentionApplicationStatus status;
     private LocalDateTime createdAt;
 }
+

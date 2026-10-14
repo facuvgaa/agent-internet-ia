@@ -10,3 +10,4 @@ public interface MobileTopUpRepositoryPort {
     Optional<MobileTopUp> findFirstByCustomerIdAndMsisdnAndStatusOrderByCreatedAtDesc(
             Long customerId, String msisdn, BenefitStatus status);
 }
+

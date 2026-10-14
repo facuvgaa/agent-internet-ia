@@ -29,3 +29,4 @@ public class Billing {
         return BillingStatus.PAID.equals(status);
     }
 }
+

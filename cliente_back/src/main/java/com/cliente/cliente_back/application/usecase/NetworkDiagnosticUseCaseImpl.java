@@ -72,3 +72,4 @@ public class NetworkDiagnosticUseCaseImpl implements NetworkDiagnosticUseCase {
                 .map(networkDiagnosticMapper::toDto);
     }
 }
+

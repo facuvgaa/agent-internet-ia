@@ -11,3 +11,4 @@ public interface RetentionOfferUseCase {
     RetentionEligibilityResponseDTO getEligibility(Long customerId, Long serviceId);
     RetentionPreviewResponseDTO preview(RetentionPreviewRequestDTO request);
 }
+

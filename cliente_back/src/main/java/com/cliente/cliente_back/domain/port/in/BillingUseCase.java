@@ -8,3 +8,4 @@ public interface BillingUseCase {
     List<BillingDTO> findAllBilling(Long customerId);
     Optional<BillingDTO> findBillingByCustomerAndInvoiceNumber(Long customerId, String invoiceNumber);
 }
+

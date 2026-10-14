@@ -6,3 +6,4 @@ import com.cliente.cliente_back.application.dto.CustomerDTO;
 public interface CustomerUseCase {
     Optional<CustomerDTO> getCustomerById(Long id);
 }
+

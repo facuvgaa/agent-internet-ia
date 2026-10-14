@@ -24,3 +24,4 @@ public class NetworkDiagnostic {
     private String message;
     private LocalDateTime createdAt;
 }
+

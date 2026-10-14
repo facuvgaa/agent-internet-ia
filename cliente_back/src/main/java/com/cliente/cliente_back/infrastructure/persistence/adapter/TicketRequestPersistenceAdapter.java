@@ -27,3 +27,4 @@ public class TicketRequestPersistenceAdapter implements TicketRequestRepositoryP
         return ticketRequestRepository.findById(id).map(ticketRequestMapper::toDomain);
     }
 }
+

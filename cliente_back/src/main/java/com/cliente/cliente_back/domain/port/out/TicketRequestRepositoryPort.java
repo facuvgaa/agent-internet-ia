@@ -7,3 +7,4 @@ public interface TicketRequestRepositoryPort {
     TicketRequest save(TicketRequest ticket);
     Optional<TicketRequest> findById(Long id);
 }
+

@@ -50,3 +50,4 @@ class RetentionPricingServiceTest {
         assertTrue(summary.contains("5000.00"));
     }
 }
+

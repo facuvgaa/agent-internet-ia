@@ -38,3 +38,4 @@ public class ServiceSubscription {
         return !lower.contains("suspend") && !lower.contains("baja") && !lower.contains("cancel");
     }
 }
+

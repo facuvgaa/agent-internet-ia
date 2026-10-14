@@ -21,3 +21,4 @@ public class ConnectionReset {
     private Integer estimatedSeconds;
     private LocalDateTime createdAt;
 }
+

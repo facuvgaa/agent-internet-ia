@@ -18,3 +18,4 @@ public class PaymentPromise {
     private PaymentPromiseStatus status;
     private LocalDateTime createdAt;
 }
+

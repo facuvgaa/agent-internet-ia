@@ -6,3 +6,4 @@ import com.cliente.cliente_back.application.dto.retention.RetentionApplicationRe
 public interface RetentionApplicationUseCase {
     RetentionApplicationResponseDTO apply(RetentionApplicationRequestDTO request);
 }
+

@@ -29,3 +29,4 @@ public interface BillingEntityMapper {
     @Mapping(target = "serviceSummary", expression = "java(Collections.emptyList())")
     BillingDTO toDto(BillingEntity entity);
 }
+

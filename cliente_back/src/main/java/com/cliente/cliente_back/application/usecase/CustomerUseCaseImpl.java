@@ -20,3 +20,4 @@ public class CustomerUseCaseImpl implements CustomerUseCase {
         return customerRepositoryPort.findById(id).map(customerMapper::toDto);
     }
 }
+

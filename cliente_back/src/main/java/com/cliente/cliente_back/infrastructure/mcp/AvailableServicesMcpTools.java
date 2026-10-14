@@ -22,3 +22,4 @@ public class AvailableServicesMcpTools {
         return customerAvailableOfferingUseCase.listOfferingsForCustomer(customerId);
     }
 }
+

@@ -13,3 +13,4 @@ public interface TicketRequestEntityMapper {
     TicketRequestDTO toDto(TicketRequestEntity entity);
     TicketRequestEntity toEntity(TicketRequestDTO dto);
 }
+

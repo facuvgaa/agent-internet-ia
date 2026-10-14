@@ -6,3 +6,4 @@ import com.cliente.cliente_back.application.dto.MobileTopUpResponseDTO;
 public interface MobileTopUpUseCase {
     MobileTopUpResponseDTO grantTopUp(MobileTopUpRequestDTO request);
 }
+

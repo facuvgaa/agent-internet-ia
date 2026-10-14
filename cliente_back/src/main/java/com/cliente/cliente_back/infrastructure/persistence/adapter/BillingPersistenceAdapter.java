@@ -51,3 +51,4 @@ public class BillingPersistenceAdapter implements BillingRepositoryPort {
         return billingMapper.toDomain(saved);
     }
 }
+

@@ -20,3 +20,4 @@ public class KafkaChatMessagePublisherAdapter implements ChatMessagePublisherPor
         kafkaTemplate.send("consultas.usuario", mensaje);
     }
 }
+

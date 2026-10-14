@@ -84,3 +84,4 @@ public enum AvailableOfferingSpec {
                 .findFirst();
     }
 }
+

@@ -23,3 +23,4 @@ public class TicketRequest {
         return closedAt != null || "CLOSED".equalsIgnoreCase(status);
     }
 }
+

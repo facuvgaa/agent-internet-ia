@@ -13,3 +13,4 @@ public interface CustomerEntityMapper {
     CustomerDTO toDto(CustomerEntity entity);
     CustomerEntity toEntity(CustomerDTO dto);
 }
+

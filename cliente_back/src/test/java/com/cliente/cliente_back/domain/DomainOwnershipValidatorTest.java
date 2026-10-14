@@ -43,3 +43,4 @@ class DomainOwnershipValidatorTest {
                 () -> DomainOwnershipValidator.assertServiceBelongsToCustomer((ServiceSubscription) null, 100L));
     }
 }
+

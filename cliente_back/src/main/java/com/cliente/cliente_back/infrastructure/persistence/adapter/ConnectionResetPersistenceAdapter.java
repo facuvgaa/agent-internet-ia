@@ -27,3 +27,4 @@ public class ConnectionResetPersistenceAdapter implements ConnectionResetReposit
         return connectionResetRepository.findById(id).map(connectionResetMapper::toDomain);
     }
 }
+

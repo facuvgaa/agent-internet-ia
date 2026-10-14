@@ -6,3 +6,4 @@ import com.cliente.cliente_back.application.dto.ServicesDTO;
 public interface ServicesUseCase {
     List<ServicesDTO> findAllByCustomerId(Long customerId);
 }
+

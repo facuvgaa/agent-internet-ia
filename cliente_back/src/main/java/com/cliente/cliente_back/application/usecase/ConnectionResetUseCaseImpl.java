@@ -47,3 +47,4 @@ public class ConnectionResetUseCaseImpl implements ConnectionResetUseCase {
         return connectionResetMapper.toDto(saved);
     }
 }
+

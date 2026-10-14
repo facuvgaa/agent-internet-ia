@@ -99,3 +99,4 @@ public class RetentionApplicationUseCaseImpl implements RetentionApplicationUseC
                 message);
     }
 }
+

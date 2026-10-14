@@ -69,3 +69,4 @@ public class CustomerAvailableOfferingUseCaseImpl implements CustomerAvailableOf
         return s.getServiceType().equalsIgnoreCase(expectedType);
     }
 }
+

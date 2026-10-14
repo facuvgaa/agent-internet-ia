@@ -9,3 +9,4 @@ public interface NetworkDiagnosticRepositoryPort {
     List<NetworkDiagnostic> findByCustomerIdAndServiceIdOrderByCreatedAtDesc(Long customerId, Long serviceId);
     Optional<NetworkDiagnostic> findFirstByCustomerIdAndServiceIdOrderByCreatedAtDesc(Long customerId, Long serviceId);
 }
+

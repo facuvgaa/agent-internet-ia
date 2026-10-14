@@ -37,3 +37,4 @@ class MobileTopUpCooldownValidatorTest {
                 () -> MobileTopUpCooldownValidator.validateCooldown(future, now));
     }
 }
+

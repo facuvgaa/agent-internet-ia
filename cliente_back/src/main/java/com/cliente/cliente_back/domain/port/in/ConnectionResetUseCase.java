@@ -6,3 +6,4 @@ import com.cliente.cliente_back.application.dto.ConnectionResetResponseDTO;
 public interface ConnectionResetUseCase {
     ConnectionResetResponseDTO requestReset(ConnectionResetRequestDTO request);
 }
+

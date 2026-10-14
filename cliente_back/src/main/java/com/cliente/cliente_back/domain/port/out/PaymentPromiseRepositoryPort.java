@@ -7,3 +7,4 @@ public interface PaymentPromiseRepositoryPort {
     PaymentPromise save(PaymentPromise paymentPromise);
     Optional<PaymentPromise> findById(Long id);
 }
+

@@ -44,3 +44,4 @@ public interface MobileTopUpEntityMapper {
         return value == null ? null : value.toString();
     }
 }
+

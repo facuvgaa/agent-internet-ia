@@ -14,3 +14,4 @@ public interface PaymentPromiseEntityMapper {
     PaymentPromiseEntity toEntity(PaymentPromiseDTO dto);
     PaymentPromise toDomain(PaymentPromiseDTO dto);
 }
+

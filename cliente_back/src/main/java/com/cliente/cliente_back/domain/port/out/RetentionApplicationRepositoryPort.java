@@ -10,3 +10,4 @@ public interface RetentionApplicationRepositoryPort {
     Optional<RetentionApplication> findByIdempotencyKey(String idempotencyKey);
     boolean existsByServiceIdAndStatusAndValidUntilAfter(Long serviceId, RetentionApplicationStatus status, LocalDateTime now);
 }
+

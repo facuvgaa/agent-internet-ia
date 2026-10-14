@@ -40,3 +40,4 @@ public class CustomerPersistenceAdapter implements CustomerRepositoryPort {
                 .toList();
     }
 }
+

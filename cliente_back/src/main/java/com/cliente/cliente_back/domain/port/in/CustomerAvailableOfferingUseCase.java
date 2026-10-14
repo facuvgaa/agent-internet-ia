@@ -5,3 +5,4 @@ import com.cliente.cliente_back.application.dto.AvailableOfferingsForCustomerDTO
 public interface CustomerAvailableOfferingUseCase {
     AvailableOfferingsForCustomerDTO listOfferingsForCustomer(Long customerId);
 }
+

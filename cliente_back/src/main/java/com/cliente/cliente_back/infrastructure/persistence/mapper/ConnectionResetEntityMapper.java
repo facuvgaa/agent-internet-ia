@@ -24,3 +24,4 @@ public interface ConnectionResetEntityMapper {
     @Mapping(target = "createdAt", ignore = true)
     ConnectionResetEntity fromRequest(ConnectionResetRequestDTO request);
 }
+

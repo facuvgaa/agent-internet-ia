@@ -7,3 +7,4 @@ public interface ConnectionResetRepositoryPort {
     ConnectionReset save(ConnectionReset reset);
     Optional<ConnectionReset> findById(Long id);
 }
+

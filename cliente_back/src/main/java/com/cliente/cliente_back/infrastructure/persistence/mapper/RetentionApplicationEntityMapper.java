@@ -26,3 +26,4 @@ public interface RetentionApplicationEntityMapper {
     @Mapping(target = "message", expression = "java(\"Acuerdo de retención registrado con éxito\")")
     RetentionApplicationResponseDTO toDto(RetentionApplication domain);
 }
+

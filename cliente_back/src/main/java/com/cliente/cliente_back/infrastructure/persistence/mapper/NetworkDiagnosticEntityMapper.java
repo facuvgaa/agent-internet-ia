@@ -30,3 +30,4 @@ public interface NetworkDiagnosticEntityMapper {
     @Mapping(target = "createdAt", ignore = true)
     NetworkDiagnosticEntity fromRequest(NetworkDiagnosticRequestDTO request);
 }
+

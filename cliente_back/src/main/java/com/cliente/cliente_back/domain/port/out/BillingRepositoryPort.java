@@ -11,3 +11,4 @@ public interface BillingRepositoryPort {
     Optional<Billing> findByCustomerIdAndInvoiceNumberIgnoreCase(Long customerId, String invoiceNumber);
     Billing save(Billing billing);
 }
+

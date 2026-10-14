@@ -29,3 +29,4 @@ public class TicketRequestUseCaseImpl implements TicketRequestUseCase {
         return ticketRequestMapper.toDto(saved);
     }
 }
+

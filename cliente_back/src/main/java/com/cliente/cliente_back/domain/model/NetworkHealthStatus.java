@@ -6,3 +6,4 @@ public enum NetworkHealthStatus {
     CRITICAL,
     UNKNOWN
 }
+

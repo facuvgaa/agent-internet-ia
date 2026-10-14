@@ -35,3 +35,4 @@ public class RetentionApplicationPersistenceAdapter implements RetentionApplicat
         return retentionApplicationRepository.existsByServiceIdAndStatusAndValidUntilAfter(serviceId, status, now);
     }
 }
+

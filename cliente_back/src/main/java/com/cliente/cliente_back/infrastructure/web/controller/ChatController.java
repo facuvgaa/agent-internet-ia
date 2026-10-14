@@ -18,3 +18,4 @@ public class ChatController {
         chatMessagePublisherPort.publishUserQuery(request.getCustomerId(), request.getContenido());
     }
 }
+
