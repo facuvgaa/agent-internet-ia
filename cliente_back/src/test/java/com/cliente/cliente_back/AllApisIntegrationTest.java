@@ -24,16 +24,16 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.cliente.cliente_back.dto.BillingStatus;
-import com.cliente.cliente_back.dto.TicketRequestDTO;
-import com.cliente.cliente_back.entities.BillingEntity;
-import com.cliente.cliente_back.entities.CustomerEntity;
-import com.cliente.cliente_back.entities.ServicesEntity;
-import com.cliente.cliente_back.entities.TicketRequestEntity;
-import com.cliente.cliente_back.repositories.BillingRepository;
-import com.cliente.cliente_back.repositories.CustomerRepository;
-import com.cliente.cliente_back.repositories.ServiceRepository;
-import com.cliente.cliente_back.repositories.TicketRequestRepository;
+import com.cliente.cliente_back.domain.model.BillingStatus;
+import com.cliente.cliente_back.application.dto.TicketRequestDTO;
+import com.cliente.cliente_back.infrastructure.persistence.entity.BillingEntity;
+import com.cliente.cliente_back.infrastructure.persistence.entity.CustomerEntity;
+import com.cliente.cliente_back.infrastructure.persistence.entity.ServicesEntity;
+import com.cliente.cliente_back.infrastructure.persistence.entity.TicketRequestEntity;
+import com.cliente.cliente_back.infrastructure.persistence.repository.BillingRepository;
+import com.cliente.cliente_back.infrastructure.persistence.repository.CustomerRepository;
+import com.cliente.cliente_back.infrastructure.persistence.repository.ServiceRepository;
+import com.cliente.cliente_back.infrastructure.persistence.repository.TicketRequestRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @SpringBootTest
