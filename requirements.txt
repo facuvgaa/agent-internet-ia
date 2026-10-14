@@ -1,10 +1,21 @@
-langchain>=0.3.0
-langchain-core>=0.3.0
-langchain-aws>=0.2.0
+# Orquestación
 langgraph>=0.2.0
+langgraph-checkpoint-redis>=0.2.0
 langgraph-checkpoint-postgres>=3.0.4
-langgraph-checkpoint-redis>=0.4.0
+
+# LLM (Bedrock directo, sin langchain-aws)
 boto3>=1.34.0
+
+# MCP Client
+mcp>=1.0.0
+
+# Kafka
 confluent-kafka>=2.3.0
+
+# Bases de datos
+psycopg[binary]>=3.1.0
+redis>=5.0.0
+
+# Utilidades
 python-dotenv>=1.0.1
 pydantic>=2.0,<3

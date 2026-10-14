@@ -3,7 +3,6 @@ import os
 from dotenv import load_dotenv
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.checkpoint.redis import RedisSaver
-from langchain_core.messages import AIMessage, HumanMessage, BaseMessage
 from memory.save_to_db import conexion_to_db
 from memory.query import recover_conver, save_conver
 
@@ -81,15 +80,14 @@ def get_memory(customer_id: str, last_n: int = 5) -> list:
         return []
 
 
-def _row_to_message(rol: str | None, contenido: str | None) -> BaseMessage:
+def _row_to_message(rol: str | None, contenido: str | None) -> dict:
+    """Convierte fila de Postgres a dict nativo Bedrock Converse."""
     r = (rol or "").lower().strip()
-    c = contenido or ""
-    if r in ("human", "user", "humanmessage"):
-        return HumanMessage(content=c)
-    return AIMessage(content=c)
+    role = "user" if r in ("human", "user", "humanmessage") else "assistant"
+    return {"role": role, "content": [{"text": contenido or ""}]}
 
 
-def recover_consersation(customer_id: str, last_n: int = 5) -> list[BaseMessage]:
+def recover_consersation(customer_id: str, last_n: int = 5) -> list[dict]:
     try:
         conn = conexion_to_db()
         cursor = conn.cursor()
@@ -119,8 +117,13 @@ def save_conversation(customer_id: str) -> int:
         conn = conexion_to_db()
         with conn.cursor() as cur:
             for orden, m in enumerate(mensajes):
-                rol      = getattr(m, "type", None) or m.__class__.__name__.lower()
-                contenido = getattr(m, "content", "")
+                # m es un dict nativo Bedrock: {"role": ..., "content": [...]}
+                rol = m.get("role", "user")
+                contenido = " ".join(
+                    b.get("text", "")
+                    for b in m.get("content", [])
+                    if "text" in b
+                )
                 cur.execute(save_conver(), (customer_id, orden, rol, contenido))
         conn.commit()
         conn.close()
