@@ -1,0 +1,196 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types: [completed]
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Entorno de despliegue'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+      deploy_ssh:
+        description: 'Ejecutar despliegue remoto por SSH (si los secrets estan configurados)'
+        required: true
+        default: true
+        type: boolean
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+
+  # ── Publicación de Imágenes en GitHub Container Registry (GHCR) ─────────────
+  publish-images:
+    name: Build & Push Images to GHCR
+    runs-on: ubuntu-latest
+    if: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Normalize repository owner to lowercase
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >> "${GITHUB_ENV}"
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Metadata y Build: Backend (Spring Boot) ───────────────────────────
+      - name: Docker metadata for cliente-back
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ env.OWNER_LC }}/agent-internet-ia-cliente-back
+          tags: |
+            type=raw,value=latest,enable=true
+            type=sha,prefix=sha-,format=short
+            type=ref,event=tag
+
+      - name: Build and push cliente_back
+        uses: docker/build-push-action@v6
+        with:
+          context: ./cliente_back
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── Metadata y Build: Brain (LangGraph + Bedrock) ──────────────────────
+      - name: Docker metadata for ia-brain
+        id: meta-brain
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ env.OWNER_LC }}/agent-internet-ia-ia-brain
+          tags: |
+            type=raw,value=latest,enable=true
+            type=sha,prefix=sha-,format=short
+            type=ref,event=tag
+
+      - name: Build and push ia-brain
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ia-master-brain/Dockerfile
+          push: true
+          tags: ${{ steps.meta-brain.outputs.tags }}
+          labels: ${{ steps.meta-brain.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── Metadata y Build: Frontend (React + Vite + Nginx) ─────────────────
+      - name: Docker metadata for moustro-front
+        id: meta-front
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ env.OWNER_LC }}/agent-internet-ia-moustro-front
+          tags: |
+            type=raw,value=latest,enable=true
+            type=sha,prefix=sha-,format=short
+            type=ref,event=tag
+
+      - name: Build and push moustro-front
+        uses: docker/build-push-action@v6
+        with:
+          context: ./moustro-front
+          push: true
+          tags: ${{ steps.meta-front.outputs.tags }}
+          labels: ${{ steps.meta-front.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── Despliegue Automatizado ────────────────────────────────────────────────
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+    needs: [publish-images]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Check SSH deployment configuration
+        id: check-ssh
+        run: |
+          if [ -n "${{ secrets.SSH_HOST }}" ] && [ -n "${{ secrets.SSH_USER }}" ] && [ -n "${{ secrets.SSH_KEY }}" ]; then
+            echo "has_ssh=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_ssh=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy via SSH (if configured)
+        if: steps:check-ssh.outputs.has_ssh == 'true' && (github.event.inputs.deploy_ssh != 'false')
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            cd ${{ secrets.DEPLOY_DIR || '/opt/agent-internet-ia' }}
+            echo "Actualizando imágenes y levantando servicios..."
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            docker system prune -f
+
+      - name: Report deployment status
+        run: |
+          cat <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          ## 🚀 Resumen de Entrega Continua (CD)
+
+          - **Imágenes publicadas en GHCR:**
+            - `ghcr.io/${{ github.repository_owner }}/agent-internet-ia-cliente-back:latest`
+            - `ghcr.io/${{ github.repository_owner }}/agent-internet-ia-ia-brain:latest`
+            - `ghcr.io/${{ github.repository_owner }}/agent-internet-ia-moustro-front:latest`
+
+          ### 📦 Despliegue en Servidor
+          EOF
+          if [ "${{ steps.check-ssh.outputs.has_ssh }}" = "true" ]; then
+            echo "- ✅ Despliegue SSH ejecutado con éxito en el servidor remoto." >> "$GITHUB_STEP_SUMMARY"
+          else
+            cat <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          - ℹ️ **Modo manual / Sin SSH configurado**: Las imágenes están listas en GHCR.
+          - Para desplegar en cualquier servidor:
+            ```bash
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d
+            ```
+          - *(Opcional)* Para activar el despliegue automático por SSH en cada merge a `main`, agregá los siguientes secrets en GitHub (*Settings → Secrets and variables → Actions*):
+            - `SSH_HOST`
+            - `SSH_USER`
+            - `SSH_KEY`
+            - `DEPLOY_DIR` *(opcional, default `/opt/agent-internet-ia`)*
+          EOF
+          fi
